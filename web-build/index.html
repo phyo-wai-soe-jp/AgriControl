@@ -655,6 +655,46 @@
       gap: 10px;
     }
 
+    .continuity-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .continuity-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      min-height: 156px;
+      display: grid;
+      align-content: space-between;
+      gap: 12px;
+    }
+
+    .continuity-card h3 {
+      margin: 0;
+      font-size: 0.98rem;
+      letter-spacing: 0;
+    }
+
+    .continuity-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .resource-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
     .next-item {
       padding: 12px;
       display: grid;
@@ -750,6 +790,7 @@
       .stage-grid,
       .branch-grid,
       .loop-grid,
+      .continuity-grid,
       .gate-grid {
         grid-template-columns: 1fr;
       }
@@ -836,6 +877,10 @@
           <span class="icon" aria-hidden="true">PDF</span>
           Blueprint
         </a>
+        <a class="btn" href="./docs/AI_CONTINUITY_SYSTEM.md" target="_blank" rel="noreferrer">
+          <span class="icon" aria-hidden="true">AI</span>
+          Handoff
+        </a>
         <button class="btn" id="printBtn" type="button" title="Print or save the current report">
           <span class="icon" aria-hidden="true">PR</span>
           Print
@@ -866,6 +911,7 @@
           <a href="#branches">Branches <span class="mini">16</span></a>
           <a href="#loop">Control Loop <span class="mini">12</span></a>
           <a href="#gates">Gates <span class="mini">A-E</span></a>
+          <a href="#continuity">AI System <span class="mini">Ready</span></a>
           <a href="#report">Report <span class="mini">Live</span></a>
         </nav>
         <div class="nav-title">Controls</div>
@@ -931,6 +977,50 @@
           </div>
           <div class="section-body">
             <div class="next-list" id="nextList"></div>
+          </div>
+        </section>
+
+        <section class="section" id="continuity">
+          <div class="section-head">
+            <div>
+              <h2>AI Continuity</h2>
+              <p>Future models can resume from the same blueprint, progress model, and handoff rules without relying on this conversation.</p>
+            </div>
+            <span class="badge done">System Ready</span>
+          </div>
+          <div class="section-body">
+            <div class="continuity-grid" aria-label="AI continuity resources">
+              <article class="continuity-card">
+                <div>
+                  <h3>Operating Rules</h3>
+                  <p>Defines the central control-loop invariant, update cycle, status vocabulary, and handoff checklist.</p>
+                </div>
+                <div class="resource-row">
+                  <span>Markdown guide</span>
+                  <a href="./docs/AI_CONTINUITY_SYSTEM.md" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
+              <article class="continuity-card">
+                <div>
+                  <h3>Current State</h3>
+                  <p>Records live links, completed work, known unknowns, evidence, and the next open tasks.</p>
+                </div>
+                <div class="resource-row">
+                  <span>Project state</span>
+                  <a href="./docs/PROJECT_STATE.md" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
+              <article class="continuity-card">
+                <div>
+                  <h3>Machine Baseline</h3>
+                  <p>Stores the blueprint stages, tasks, branch statuses, gate criteria, loop steps, and baseline metrics.</p>
+                </div>
+                <div class="resource-row">
+                  <span>JSON data</span>
+                  <a href="./data/progress-baseline.json" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
+            </div>
           </div>
         </section>
 
