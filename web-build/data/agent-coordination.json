@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T00:00:00+09:00",
+  "updated_at": "2026-08-04T05:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -60,11 +60,18 @@
     {
       "id": "agent-03-logic",
       "role": "Pure logic agent",
-      "model": "Unassigned",
-      "status": "ready",
-      "current_work": "Implement canonical sensor structures, system state, actuator state, decision engine, and safety supervisor on the computer.",
-      "done_work": [],
-      "next_work": "Use Stage 2 prompts and build host-runnable tests for normal, boundary, conflict, and sequence behavior.",
+      "model": "Claude Sonnet 5",
+      "status": "done",
+      "current_work": "Stage 2 pure logic (tasks 9-16) complete: canonical sensor state, system/actuator state, decision engine, and safety supervisor implemented and tested in logic/ and tests/.",
+      "done_work": [
+        "Implemented logic/canonical.py (SensorReading, SensorState, SourceMode).",
+        "Implemented logic/system_state.py (SystemState with an explicit mode transition graph).",
+        "Implemented logic/actuator_state.py (ActuatorState with requested/commanded/simulated/measured/fault separation).",
+        "Implemented logic/decision.py (stateful temperature and irrigation-hysteresis decision engine).",
+        "Implemented logic/safety.py (safety supervisor with documented priority order and safe-state matrix).",
+        "Added 35 passing unit/boundary/conflict/sequence tests in tests/ (python3 -m unittest discover -s tests)."
+      ],
+      "next_work": "Stage 3 (physical outputs) needs the ESP32-C3 board, pin map, and wiring evidence from agent-02-hardware before decision/safety output can be wired to real drivers.",
       "needs_owner": false,
       "blueprint_scope": ["Stage 2", "Branches 6-9", "Branch 13"]
     },

@@ -1815,11 +1815,11 @@
       {
         id: "agent-03-logic",
         role: "Pure logic agent",
-        model: "Unassigned",
-        status: "ready",
-        current_work: "Implement canonical sensor structures, system state, actuator state, decision engine, and safety supervisor on the computer.",
-        done_work: "",
-        next_work: "Use Stage 2 prompts and build host-runnable tests for normal, boundary, conflict, and sequence behavior.",
+        model: "Claude Sonnet 5",
+        status: "done",
+        current_work: "Stage 2 pure logic (tasks 9-16) complete: canonical sensor state, system/actuator state, decision engine, and safety supervisor implemented and tested in logic/ and tests/.",
+        done_work: "Implemented logic/canonical.py, logic/system_state.py, logic/actuator_state.py, logic/decision.py, logic/safety.py; added 35 passing unit/boundary/conflict/sequence tests in tests/.",
+        next_work: "Stage 3 (physical outputs) needs the ESP32-C3 board, pin map, and wiring evidence from agent-02-hardware before decision/safety output can be wired to real drivers.",
         needs_owner: false,
         scope: "Stage 2, Branches 6-9, Branch 13"
       },
@@ -1886,23 +1886,27 @@
         "6": "done",
         "7": "done",
         "8": "done",
-        "9": "active",
-        "10": "active",
-        "11": "active",
-        "12": "active"
+        "9": "done",
+        "10": "done",
+        "11": "done",
+        "12": "done",
+        "13": "done",
+        "14": "done",
+        "15": "done",
+        "16": "done"
       },
       branches: {
         "1": "verified",
         "4": "drafted",
-        "6": "drafted",
-        "7": "drafted",
-        "8": "drafted",
-        "9": "drafted",
+        "6": "implemented",
+        "7": "implemented",
+        "8": "implemented",
+        "9": "implemented",
         "12": "drafted",
         "13": "drafted"
       },
       gates: {},
-      notes: "Initial public progress page created from the ESP32 Virtual Control Lab blueprint.",
+      notes: "Stage 2 pure logic (canonical sensors, system/actuator state, decision engine, safety supervisor) implemented and unit/boundary/conflict/sequence tested in logic/ and tests/. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

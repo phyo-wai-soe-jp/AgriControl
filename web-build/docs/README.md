@@ -32,6 +32,10 @@ bypass the central control loop.
 - `data/prompt-test-library.json` - machine-readable prompt and test catalog.
 - `tools/generate-prompt-test-library.mjs` - rebuilds the Markdown and JSON
   prompt library from the baseline model.
+- `logic/` - host-runnable pure logic: canonical sensor state, system and
+  actuator state, the stateful decision engine, and the safety supervisor.
+- `tests/` - unit, boundary, conflict, and sequence tests for `logic/`
+  (`python3 -m unittest discover -s tests`).
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model

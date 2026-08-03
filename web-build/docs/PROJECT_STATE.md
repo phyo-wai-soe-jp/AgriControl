@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST
+Last updated: 2026-08-04 JST (Stage 2 pure logic)
 
 ## Live Links
 
@@ -37,16 +37,19 @@ Important files:
 - `web-build/data/agent-coordination.json`
 - `web-build/data/prompt-test-library.json`
 - `tools/generate-prompt-test-library.mjs`
+- `logic/` - host-runnable pure logic: canonical sensor state, system/actuator
+  state, decision engine, safety supervisor.
+- `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 11%
-- Roadmap execution: 6%
-- Branch readiness: 22%
+- Overall progress: 19%
+- Roadmap execution: 15%
+- Branch readiness: 30%
 - Completion gates: 0%
-- Central control-loop coverage: 18%
+- Central control-loop coverage: 30%
 
 These numbers come from the blueprint-derived model in
 `data/progress-baseline.json`. Browser-local edits on the public dashboard do
@@ -54,9 +57,90 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
-Date: 2026-08-04 JST
+Date: 2026-08-04 JST (Stage 2 pure logic)
+
+Agent: agent-03-logic (Claude Sonnet 5).
 
 Changed:
+
+- Added `logic/canonical.py`: `SensorReading` / `SensorState` matching the
+  blueprint's canonical sensor record schema (name, value, unit, source,
+  quality, received_at_ms, valid) and `SourceMode` (virtual/physical/hybrid/
+  disabled).
+- Added `logic/system_state.py`: `SystemState` with an explicit
+  `Mode` transition graph (`BOOT -> CONNECTING -> READY -> AUTOMATIC ->
+  WARNING/SAFE/FAULT -> RECOVERY -> AUTOMATIC`) that raises
+  `InvalidModeTransition` on any transition outside the documented chain,
+  instead of relying on independent boolean flags.
+- Added `logic/actuator_state.py`: `ActuatorState` keeping requested,
+  commanded, simulated, measured, and fault evidence separate.
+- Added `logic/decision.py`: stateful decision engine implementing the
+  blueprint's temperature rules (`<=28 C` fan off / window closed, `28-35 C`
+  fan on / window half, `>35 C` fan on / window full) and irrigation
+  hysteresis rules (moisture `<30%` + no rain -> pump on, `>40%` -> pump off,
+  otherwise hold previous state). Returns triggered rule IDs and human
+  reasons. Contains no GPIO/PWM/Wi-Fi/HTTP/browser calls.
+- Added `logic/safety.py`: safety supervisor implementing the documented
+  priority order (Emergency > Safety > Equipment protection > Automatic
+  operation) and safe-state matrix (startup, valid operation, low tank,
+  stale data, controller fault, emergency stop). Only narrows/overrides
+  decision output; never recomputes requested actions.
+- Added `tests/` (stdlib `unittest`, no external dependencies): 35 tests
+  covering normal conditions (task 13), exact boundaries (task 14),
+  conflicting rules (task 15), and stateful sequences (task 16), including
+  the blueprint's own worked examples (moisture sequence `50 -> 20 -> 35 ->
+  45%`; conflict example "dry soil -> pump ON, tank below 15% -> pump OFF").
+- Updated `data/progress-baseline.json` and the dashboard's embedded
+  baseline in `web-build/index.html`: tasks 9-16 -> `done`; branches 6
+  (Sensor abstraction), 7 (State management), 8 (Decision engine), 9 (Safety
+  supervisor) -> `implemented` (not yet `verified`, since firmware/hardware
+  integration for these branches has not happened).
+
+Design decisions made explicit (not hardware facts, so not blockers, but
+worth a future owner review):
+
+- Tank-level gating for the pump is implemented only in the safety
+  supervisor, not duplicated in the decision engine's irrigation rule. The
+  blueprint's own worked conflict example ("Decision engine: dry soil ->
+  pump ON. Safety supervisor: tank below 15% -> pump OFF.") only makes sense
+  if the decision engine's pump-on rule does not itself check tank level;
+  this keeps decision and safety strictly separate per the blueprint's
+  Stage 2 instruction.
+- "Safe angle" (stale data / controller fault / emergency stop) defaults to
+  the closed window angle (10 deg), matching the blueprint's own startup
+  default. "Configured safe fan state" defaults to off and is an explicit
+  parameter of `evaluate_safety`, not a hardcoded guess.
+
+Blueprint area (this session):
+
+- Stage 2: Pure logic.
+- Branch 6: Sensor abstraction.
+- Branch 7: State management.
+- Branch 8: Decision engine.
+- Branch 9: Safety supervisor.
+- Control-loop steps 4-7 (update canonical sensor state, calculate requested
+  actions, apply safety priorities, generate final commands).
+
+Evidence (this session):
+
+- `python3 -m unittest discover -s tests -v` -> 35 tests, all passed
+  (0 failures, 0 errors).
+- Manual review confirmed no `gpio`, `machine.`, `network.`, `socket`, or
+  `http` references inside `logic/` (only doc-comment mentions describing
+  what the package deliberately avoids).
+- Dashboard (`web-build/index.html`) baseline updated in the same commit as
+  the public JSON mirrors; deployed and verified HTTP 200 (see Deployment
+  Notes below).
+
+Status updates (this session):
+
+- Roadmap tasks 9-16 marked `done`.
+- Branches 6 (Sensor abstraction), 7 (State management), 8 (Decision engine),
+  9 (Safety supervisor) marked `implemented`.
+- Overall/roadmap/branch/control-loop percentages recomputed from the
+  updated task and branch statuses (see Current Progress Snapshot above).
+
+Older changes (previous sessions):
 
 - Created the public task-management dashboard at
   `https://phyowaisoe.com/agricontrol/taskmanagement/`.
@@ -72,7 +156,7 @@ Changed:
   what each role has done, what comes next, and where owner help is needed.
 - Added owner and AI-agent guides for using the infrastructure.
 
-Blueprint area:
+Blueprint area (older sessions):
 
 - Product definition.
 - Roadmap reporting.
@@ -85,7 +169,7 @@ Blueprint area:
   blockers.
 - Multi-agent coordination and handoff reporting.
 
-Evidence:
+Evidence (older sessions):
 
 - Public dashboard returned HTTP 200 after deployment.
 - Public blueprint PDF returned HTTP 200 after deployment.
@@ -100,13 +184,11 @@ Evidence:
 - User and AI-agent guides were added and mirrored to the public dashboard
   bundle.
 
-Status updates:
+Status updates (older sessions, superseded above where noted):
 
 - Product definition is marked `verified`.
-- Protocol, sensor abstraction, state management, decision engine, safety
-  supervisor, observability, and testing are marked `drafted`.
+- Protocol, observability, and testing are marked `drafted`.
 - Roadmap steps 5-8 are marked `done`.
-- Roadmap steps 9-12 are marked `active`.
 
 ## Known Unknowns
 
@@ -120,14 +202,19 @@ These must not be guessed:
 
 ## Next Work
 
+Stage 2 (Pure logic, tasks 9-16) is done: `logic/` implements canonical
+sensor state, system/actuator state, the stateful decision engine, and the
+safety supervisor, verified by 35 passing host-runnable tests in `tests/`.
+
 Follow the blueprint order. The next open tasks are:
 
-1. Confirm the exact ESP32-C3 board.
-2. Record the MicroPython version.
-3. Create the complete pin map.
-4. Verify OLED, NeoPixel, buzzer, and servo wiring.
-5. Finish canonical sensor, system state, decision engine, and safety
-   supervisor structures.
+1. Confirm the exact ESP32-C3 board. (`needs_owner`)
+2. Record the MicroPython version. (`needs_owner`)
+3. Create the complete pin map. (`needs_owner`)
+4. Verify OLED, NeoPixel, buzzer, and servo wiring. (`needs_owner`)
+5. Stage 3 (Local physical outputs, tasks 17-23) is blocked behind 1-4: it
+   requires the confirmed board, pin map, and wiring evidence before any
+   driver code can be written or tested against real hardware.
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
