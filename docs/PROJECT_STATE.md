@@ -27,6 +27,7 @@ Important files:
 - `web-build/docs/AI_CONTINUITY_SYSTEM.md`
 - `web-build/docs/PROJECT_STATE.md`
 - `web-build/docs/PROMPT_TEST_LIBRARY.md`
+- `web-build/docs/README.md`
 - `web-build/data/progress-baseline.json`
 - `web-build/data/prompt-test-library.json`
 - `tools/generate-prompt-test-library.mjs`
@@ -58,6 +59,9 @@ Changed:
 - Added this AI continuity system so future models can resume systematically.
 - Added the prompt and test library so future models have task-level,
   stage-level, branch-level, gate-level, and workflow-level prompts.
+- Added a dashboard communication report feature that can explain what is not
+  done, where owner help is needed, what is unknown, and what is blocked in
+  multiple-choice, long-text, or structured handoff formats.
 
 Blueprint area:
 
@@ -68,6 +72,8 @@ Blueprint area:
 - Central control-loop reporting.
 - Prompt and test library for all blueprint stages, branches, tasks, gates, and
   reusable verification workflows.
+- Owner communication reporting for open work, help requests, unknowns, and
+  blockers.
 
 Evidence:
 
@@ -79,6 +85,7 @@ Evidence:
   gate prompts, and 7 reusable test workflows.
 - Public prompt library Markdown returned HTTP 200 after deployment.
 - Public prompt library JSON returned HTTP 200 after deployment.
+- Dashboard communication report JavaScript parsed successfully.
 
 Status updates:
 
@@ -112,6 +119,9 @@ Follow the blueprint order. The next open tasks are:
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
 marking progress complete.
+
+Use the dashboard's Communication Report section to ask the owner for hardware
+facts or decisions in multiple-choice, long-text, or structured handoff form.
 
 ## Deployment Notes
 

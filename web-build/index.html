@@ -684,6 +684,138 @@
       font-size: 0.9rem;
     }
 
+    .communication-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.3fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .mode-panel,
+    .message-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+    }
+
+    .mode-buttons {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .mode-btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 44px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .mode-btn[aria-pressed="true"] {
+      background: var(--teal);
+      border-color: var(--teal);
+      color: #fff;
+    }
+
+    .mode-btn small {
+      color: inherit;
+      opacity: 0.78;
+      font-weight: 650;
+    }
+
+    .report-options {
+      display: grid;
+      gap: 8px;
+    }
+
+    .report-option {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      min-height: 42px;
+      padding: 9px 10px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      cursor: pointer;
+    }
+
+    .report-option input {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .question-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .question-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .question-card h3 {
+      margin: 0;
+      font-size: 0.96rem;
+      letter-spacing: 0;
+    }
+
+    .question-card p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .owner-answer {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 0 9px;
+    }
+
+    .message-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+    }
+
+    .copy-status {
+      color: var(--muted);
+      font-size: 0.84rem;
+      min-height: 20px;
+    }
+
+    .reply-box {
+      margin-top: 12px;
+    }
+
+    .reply-box textarea {
+      min-height: 112px;
+    }
+
     .resource-row {
       display: flex;
       align-items: center;
@@ -762,6 +894,10 @@
       .continuity-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+
+      .communication-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 760px) {
@@ -773,6 +909,7 @@
       .topbar,
       .section-head,
       .split,
+      .communication-grid,
       .next-item {
         grid-template-columns: 1fr;
         display: grid;
@@ -917,6 +1054,7 @@
           <a href="#loop">Control Loop <span class="mini">12</span></a>
           <a href="#gates">Gates <span class="mini">A-E</span></a>
           <a href="#continuity">AI System <span class="mini">Ready</span></a>
+          <a href="#communication">Ask Me <span class="mini">Report</span></a>
           <a href="#report">Report <span class="mini">Live</span></a>
         </nav>
         <div class="nav-title">Controls</div>
@@ -1035,6 +1173,74 @@
                   <a href="./docs/PROMPT_TEST_LIBRARY.md" target="_blank" rel="noreferrer">Open</a>
                 </div>
               </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="communication">
+          <div class="section-head">
+            <div>
+              <h2>Communication Report</h2>
+              <p>Generate a clear update about what is not done, what needs your help, and what the project does not know yet.</p>
+            </div>
+            <span class="badge warning" id="helpBadge">Help needed</span>
+          </div>
+          <div class="section-body communication-grid">
+            <div class="mode-panel">
+              <div class="nav-title">Report Style</div>
+              <div class="mode-buttons" aria-label="Report style">
+                <button class="mode-btn" type="button" data-report-mode="choice" aria-pressed="true">
+                  <span>Multiple Choice</span>
+                  <small>quick answers</small>
+                </button>
+                <button class="mode-btn" type="button" data-report-mode="long" aria-pressed="false">
+                  <span>Long Text</span>
+                  <small>full report</small>
+                </button>
+                <button class="mode-btn" type="button" data-report-mode="handoff" aria-pressed="false">
+                  <span>Structured Handoff</span>
+                  <small>copy-ready</small>
+                </button>
+              </div>
+              <div class="nav-title">Include</div>
+              <div class="report-options" aria-label="Report contents">
+                <label class="report-option">
+                  <input type="checkbox" data-report-filter="notDone" checked>
+                  <span>What is not done yet</span>
+                </label>
+                <label class="report-option">
+                  <input type="checkbox" data-report-filter="needsHelp" checked>
+                  <span>Where I need your help</span>
+                </label>
+                <label class="report-option">
+                  <input type="checkbox" data-report-filter="unknowns" checked>
+                  <span>What I do not know</span>
+                </label>
+                <label class="report-option">
+                  <input type="checkbox" data-report-filter="blocked" checked>
+                  <span>Blocked items</span>
+                </label>
+              </div>
+            </div>
+            <div class="message-panel">
+              <div class="nav-title">Generated Message</div>
+              <div class="report" id="communicationReport"></div>
+              <div class="question-list" id="ownerQuestions"></div>
+              <div class="reply-box">
+                <label for="ownerReply" class="nav-title">Your Reply Notes</label>
+                <textarea class="notes" id="ownerReply" placeholder="Add the board model, MicroPython version, wiring details, hardware test notes, or any direction you want the next AI model to use."></textarea>
+              </div>
+              <div class="message-actions">
+                <button class="btn primary" id="copyCommunicationBtn" type="button" title="Copy the generated communication report">
+                  <span class="icon" aria-hidden="true">CP</span>
+                  Copy Report
+                </button>
+                <button class="btn" id="downloadCommunicationBtn" type="button" title="Download this communication report as a text file">
+                  <span class="icon" aria-hidden="true">TXT</span>
+                  Download
+                </button>
+                <span class="copy-status" id="copyStatus" aria-live="polite"></span>
+              </div>
             </div>
           </div>
         </section>
@@ -1361,6 +1567,56 @@
       }
     ];
 
+    const knownUnknowns = [
+      {
+        id: "board",
+        title: "Exact ESP32-C3 board",
+        why: "Needed before the pin map, MicroPython runtime setup, and hardware output tests.",
+        prompt: "Which exact ESP32-C3 board is this project using?",
+        choices: ["I can provide the exact board model now", "I need to check the board label first", "Keep this unknown for now"]
+      },
+      {
+        id: "micropython",
+        title: "MicroPython version",
+        why: "Needed before firmware code and runtime compatibility can be verified.",
+        prompt: "Can you provide the MicroPython version running on the board?",
+        choices: ["I can provide the version now", "I need instructions to check it", "Keep this unknown for now"]
+      },
+      {
+        id: "pin-map",
+        title: "Complete pin map",
+        why: "Needed before OLED, NeoPixel, buzzer, and servo code can be safely assigned.",
+        prompt: "Can you provide the GPIO pin map for OLED, NeoPixel, buzzer, and servo?",
+        choices: ["I can provide the pin map now", "Help me create the pin map", "Keep this unknown for now"]
+      },
+      {
+        id: "wiring",
+        title: "Output wiring verification",
+        why: "Needed before hardware output tests can be marked done.",
+        prompt: "Can you confirm the OLED, NeoPixel, buzzer, and servo wiring?",
+        choices: ["Wiring is ready to verify", "I need wiring guidance", "Hardware is not connected yet"]
+      },
+      {
+        id: "servo-power",
+        title: "Servo power stability",
+        why: "Needed before Gate A can prove the servo moves without resetting the ESP.",
+        prompt: "Can you test or confirm the servo power supply does not reset the ESP32?",
+        choices: ["I can test servo power now", "I need a test procedure", "Servo power is not ready"]
+      }
+    ];
+
+    const defaultCommunication = {
+      reportMode: "choice",
+      filters: {
+        notDone: true,
+        needsHelp: true,
+        unknowns: true,
+        blocked: true
+      },
+      answers: {},
+      ownerReply: ""
+    };
+
     const baseline = {
       tasks: {
         "5": "done",
@@ -1383,7 +1639,8 @@
         "13": "drafted"
       },
       gates: {},
-      notes: "Initial public progress page created from the ESP32 Virtual Control Lab blueprint."
+      notes: "Initial public progress page created from the ESP32 Virtual Control Lab blueprint.",
+      communication: clone(defaultCommunication)
     };
 
     for (const gate of gates) {
@@ -1421,7 +1678,12 @@
       taskSearch: document.getElementById("taskSearch"),
       nextList: document.getElementById("nextList"),
       notes: document.getElementById("notes"),
-      summaryReport: document.getElementById("summaryReport")
+      summaryReport: document.getElementById("summaryReport"),
+      communicationReport: document.getElementById("communicationReport"),
+      ownerQuestions: document.getElementById("ownerQuestions"),
+      ownerReply: document.getElementById("ownerReply"),
+      helpBadge: document.getElementById("helpBadge"),
+      copyStatus: document.getElementById("copyStatus")
     };
 
     function clone(value) {
@@ -1436,7 +1698,18 @@
             tasks: { ...baseline.tasks, ...stored.tasks },
             branches: { ...baseline.branches, ...stored.branches },
             gates: { ...baseline.gates, ...stored.gates },
-            notes: stored.notes || baseline.notes
+            notes: stored.notes || baseline.notes,
+            communication: {
+              ...clone(defaultCommunication),
+              ...(stored.communication || {}),
+              filters: {
+                ...defaultCommunication.filters,
+                ...((stored.communication && stored.communication.filters) || {})
+              },
+              answers: {
+                ...((stored.communication && stored.communication.answers) || {})
+              }
+            }
           };
         }
       } catch (error) {
@@ -1459,6 +1732,54 @@
 
     function statusForGate(id) {
       return state.gates[id] || "todo";
+    }
+
+    function stageForTask(task) {
+      return stages.find((item) => item.id === task.stage);
+    }
+
+    function notDoneTasks() {
+      return tasks.filter((task) => statusForTask(task.id) !== "done");
+    }
+
+    function blockedTasks() {
+      return tasks.filter((task) => statusForTask(task.id) === "blocked");
+    }
+
+    function activeUnknowns() {
+      return knownUnknowns.filter((unknown) => {
+        if (unknown.id === "board") return statusForTask(1) !== "done";
+        if (unknown.id === "micropython") return statusForTask(2) !== "done";
+        if (unknown.id === "pin-map") return statusForTask(3) !== "done";
+        if (unknown.id === "wiring") return statusForTask(4) !== "done";
+        if (unknown.id === "servo-power") return statusForTask(23) !== "done";
+        return true;
+      });
+    }
+
+    function ownerHelpItems() {
+      const hardwareTaskIds = new Set([1, 2, 3, 4, 23]);
+      const hardwareItems = tasks
+        .filter((task) => hardwareTaskIds.has(task.id) && statusForTask(task.id) !== "done")
+        .map((task) => ({
+          id: `task-${task.id}`,
+          title: `Step ${task.id}: ${task.title}`,
+          why: `This unlocks Stage ${task.stage}: ${stageForTask(task).name}.`,
+          prompt: `Can you help with Step ${task.id}?`,
+          choices: ["I can provide this now", "I need instructions", "Not available yet"]
+        }));
+      const blockerItems = blockedTasks().map((task) => ({
+        id: `blocked-${task.id}`,
+        title: `Blocked Step ${task.id}: ${task.title}`,
+        why: "This is marked blocked in the live dashboard.",
+        prompt: `Can you unblock Step ${task.id}?`,
+        choices: ["I can unblock it now", "Tell me what evidence is needed", "Keep it blocked"]
+      }));
+      return [...hardwareItems, ...blockerItems];
+    }
+
+    function currentCommunicationText() {
+      return elements.communicationReport.textContent.trim();
     }
 
     function percent(value) {
@@ -1754,6 +2075,149 @@
       });
     }
 
+    function buildCommunicationLines(mode) {
+      const task = calcTaskProgress();
+      const branch = calcBranchProgress();
+      const gate = calcGateProgress();
+      const loop = calcLoopProgress();
+      const open = notDoneTasks();
+      const blocked = blockedTasks();
+      const help = ownerHelpItems();
+      const unknowns = activeUnknowns();
+      const filters = state.communication.filters;
+      const nextTasks = open.slice(0, 8).map((item) => `Step ${item.id}: ${item.title}`);
+      const openStages = [...new Set(open.map((item) => item.stage))]
+        .map((stageId) => `Stage ${stageId}: ${stages.find((stage) => stage.id === stageId).name}`);
+      const answered = Object.entries(state.communication.answers)
+        .filter(([, value]) => value)
+        .map(([id, value]) => `${id}: ${value}`);
+
+      if (mode === "handoff") {
+        const lines = [
+          "AgriControl handoff message",
+          `Overall progress: ${percent(average([task.value, branch.value, gate.value, loop.value]))}`,
+          `Need your help: ${help.length ? "yes" : "no"}`,
+          `Open roadmap tasks: ${open.length}`,
+          `Blocked tasks: ${blocked.length}`,
+          `Unknown facts: ${unknowns.length}`
+        ];
+        if (filters.notDone) lines.push(`Next not done: ${nextTasks.length ? nextTasks.join("; ") : "None"}`);
+        if (filters.needsHelp) lines.push(`Help needed: ${help.length ? help.map((item) => item.title).join("; ") : "None"}`);
+        if (filters.unknowns) lines.push(`Unknowns: ${unknowns.length ? unknowns.map((item) => item.title).join("; ") : "None"}`);
+        if (filters.blocked) lines.push(`Blocked: ${blocked.length ? blocked.map((item) => `Step ${item.id}: ${item.title}`).join("; ") : "None"}`);
+        if (answered.length) lines.push(`Your selected answers: ${answered.join("; ")}`);
+        if (state.communication.ownerReply.trim()) lines.push(`Your notes: ${state.communication.ownerReply.trim()}`);
+        return lines;
+      }
+
+      if (mode === "long") {
+        const lines = [
+          "AgriControl progress message",
+          "",
+          `The project is currently ${percent(average([task.value, branch.value, gate.value, loop.value]))} complete by the blueprint indicators. Roadmap execution is ${percent(task.value)}, branch readiness is ${percent(branch.value)}, completion gates are ${percent(gate.value)}, and central control-loop coverage is ${percent(loop.value)}.`,
+          ""
+        ];
+        if (filters.notDone) {
+          lines.push(`What is not done yet: ${open.length} roadmap tasks remain open or active. The active/open stages are ${openStages.join(", ") || "none"}. The next items are ${nextTasks.join("; ") || "none"}.`);
+          lines.push("");
+        }
+        if (filters.needsHelp) {
+          lines.push(`Whether I need your help: ${help.length ? "yes" : "not right now"}. ${help.length ? `The helpful inputs are ${help.map((item) => item.title).join("; ")}.` : "No owner-dependent item is currently selected from the dashboard state."}`);
+          lines.push("");
+        }
+        if (filters.unknowns) {
+          lines.push(`What I do not know yet: ${unknowns.length ? unknowns.map((item) => `${item.title} (${item.why})`).join("; ") : "no tracked unknowns remain open"}.`);
+          lines.push("");
+        }
+        if (filters.blocked) {
+          lines.push(`Blocked items: ${blocked.length ? blocked.map((item) => `Step ${item.id}: ${item.title}`).join("; ") : "none are marked blocked"}.`);
+          lines.push("");
+        }
+        lines.push("You can reply with exact hardware facts, choose one of the multiple-choice answers, or write free-form notes in the reply box. The next AI model should use that response before changing task status.");
+        if (answered.length) lines.push(`\nCurrent selected answers: ${answered.join("; ")}`);
+        if (state.communication.ownerReply.trim()) lines.push(`\nYour reply notes: ${state.communication.ownerReply.trim()}`);
+        return lines;
+      }
+
+      const lines = [
+        "AgriControl quick check-in",
+        `Need your help: ${help.length ? "yes" : "no"}`,
+        `Open tasks: ${open.length}`,
+        `Blocked tasks: ${blocked.length}`,
+        `Unknown facts: ${unknowns.length}`,
+        ""
+      ];
+      if (filters.notDone) lines.push(`Not done yet: ${nextTasks.length ? nextTasks.join("; ") : "None"}`);
+      if (filters.needsHelp) lines.push(`Please answer the multiple-choice questions below for: ${help.length ? help.map((item) => item.title).join("; ") : "no help-needed items"}.`);
+      if (filters.unknowns) lines.push(`Unknowns to resolve: ${unknowns.length ? unknowns.map((item) => item.title).join("; ") : "None"}`);
+      if (filters.blocked) lines.push(`Blocked: ${blocked.length ? blocked.map((item) => `Step ${item.id}: ${item.title}`).join("; ") : "None"}`);
+      if (answered.length) lines.push(`Selected answers: ${answered.join("; ")}`);
+      return lines;
+    }
+
+    function renderQuestionCards() {
+      elements.ownerQuestions.innerHTML = "";
+      if (state.communication.reportMode !== "choice") return;
+      const filters = state.communication.filters;
+      const helpQuestions = filters.needsHelp ? ownerHelpItems() : [];
+      const unknownQuestions = filters.unknowns
+        ? activeUnknowns().map((item) => ({
+            id: `unknown-${item.id}`,
+            title: item.title,
+            why: item.why,
+            prompt: item.prompt,
+            choices: item.choices
+          }))
+        : [];
+      const questions = [...helpQuestions, ...unknownQuestions];
+      if (!questions.length) {
+        elements.ownerQuestions.innerHTML = `<div class="empty">No owner questions are needed for the current filters.</div>`;
+        return;
+      }
+      questions.forEach((item) => {
+        const article = document.createElement("article");
+        article.className = "question-card";
+        article.innerHTML = `
+          <div>
+            <h3>${item.prompt}</h3>
+            <p>${item.why}</p>
+          </div>
+        `;
+        const select = document.createElement("select");
+        select.className = "owner-answer";
+        select.dataset.type = "owner-answer";
+        select.dataset.id = item.id;
+        const blank = document.createElement("option");
+        blank.value = "";
+        blank.textContent = "Choose an answer";
+        select.appendChild(blank);
+        item.choices.forEach((choice) => {
+          const option = document.createElement("option");
+          option.value = choice;
+          option.textContent = choice;
+          option.selected = state.communication.answers[item.id] === choice;
+          select.appendChild(option);
+        });
+        article.appendChild(select);
+        elements.ownerQuestions.appendChild(article);
+      });
+    }
+
+    function renderCommunicationReport() {
+      document.querySelectorAll(".mode-btn").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.reportMode === state.communication.reportMode));
+      });
+      document.querySelectorAll("[data-report-filter]").forEach((input) => {
+        input.checked = Boolean(state.communication.filters[input.dataset.reportFilter]);
+      });
+      const helpCount = ownerHelpItems().length;
+      const unknownCount = activeUnknowns().length;
+      elements.helpBadge.textContent = helpCount ? `${helpCount} help item${helpCount === 1 ? "" : "s"}` : "No help needed";
+      elements.helpBadge.className = `badge ${helpCount || unknownCount ? "warning" : "done"}`;
+      elements.communicationReport.textContent = buildCommunicationLines(state.communication.reportMode).join("\n");
+      renderQuestionCards();
+    }
+
     function renderReport() {
       const task = calcTaskProgress();
       const branch = calcBranchProgress();
@@ -1785,6 +2249,7 @@
       renderLoop();
       renderGates();
       renderNextWork();
+      renderCommunicationReport();
       renderReport();
     }
 
@@ -1820,6 +2285,12 @@
       const target = event.target;
       if (!(target instanceof HTMLSelectElement)) return;
       const { type, id } = target.dataset;
+      if (type === "owner-answer") {
+        state.communication.answers[id] = target.value;
+        saveState();
+        renderCommunicationReport();
+        return;
+      }
       if (type === "task") state.tasks[String(id)] = target.value;
       if (type === "branch") state.branches[String(id)] = target.value;
       if (type === "gate") state.gates[String(id)] = target.value;
@@ -1844,6 +2315,53 @@
       renderReport();
     });
 
+    elements.ownerReply.value = state.communication.ownerReply;
+    elements.ownerReply.addEventListener("input", () => {
+      state.communication.ownerReply = elements.ownerReply.value;
+      saveState();
+      renderCommunicationReport();
+    });
+
+    document.querySelectorAll(".mode-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.communication.reportMode = button.dataset.reportMode;
+        saveState();
+        renderCommunicationReport();
+      });
+    });
+
+    document.querySelectorAll("[data-report-filter]").forEach((input) => {
+      input.addEventListener("change", () => {
+        state.communication.filters[input.dataset.reportFilter] = input.checked;
+        saveState();
+        renderCommunicationReport();
+      });
+    });
+
+    document.getElementById("copyCommunicationBtn").addEventListener("click", async () => {
+      const text = currentCommunicationText();
+      try {
+        await navigator.clipboard.writeText(text);
+        elements.copyStatus.textContent = "Copied.";
+      } catch (error) {
+        elements.copyStatus.textContent = "Copy unavailable. Select and copy the report text.";
+      }
+      setTimeout(() => {
+        elements.copyStatus.textContent = "";
+      }, 2400);
+    });
+
+    document.getElementById("downloadCommunicationBtn").addEventListener("click", () => {
+      const blob = new Blob([`${currentCommunicationText()}\n`], { type: "text/plain" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "agricontrol-communication-report.txt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+
     document.getElementById("exportBtn").addEventListener("click", exportProgress);
     document.getElementById("printBtn").addEventListener("click", () => window.print());
     document.getElementById("resetBtn").addEventListener("click", () => {
@@ -1851,6 +2369,7 @@
       if (!confirmed) return;
       state = clone(baseline);
       elements.notes.value = state.notes;
+      elements.ownerReply.value = state.communication.ownerReply;
       saveState();
       renderAll();
     });
