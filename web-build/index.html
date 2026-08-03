@@ -1,0 +1,1766 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AgriControl Task Management</title>
+  <meta name="description" content="ESP32 Virtual Control Lab progress dashboard based on the project blueprint.">
+  <style>
+    :root {
+      --bg: #f5f7f3;
+      --panel: #ffffff;
+      --panel-soft: #eef4f1;
+      --ink: #182a2f;
+      --muted: #64757a;
+      --line: #d7e0dd;
+      --teal: #216c76;
+      --teal-dark: #164f58;
+      --green: #3f7d4e;
+      --amber: #b47724;
+      --red: #b13b43;
+      --blue: #456fbc;
+      --violet: #7159a8;
+      --shadow: 0 14px 38px rgba(30, 53, 51, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(33, 108, 118, 0.08), transparent 360px),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    a {
+      color: var(--teal-dark);
+      text-decoration-thickness: 0.08em;
+      text-underline-offset: 0.18em;
+    }
+
+    .shell {
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 22px 0 42px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 45%),
+        var(--teal);
+      color: white;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      letter-spacing: 0;
+      box-shadow: var(--shadow);
+      flex: 0 0 auto;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2.2vw, 2.3rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      min-height: 40px;
+      padding: 0 12px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      cursor: pointer;
+      box-shadow: 0 2px 0 rgba(24, 42, 47, 0.03);
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: rgba(33, 108, 118, 0.45);
+      color: var(--teal-dark);
+    }
+
+    .btn.primary {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal);
+    }
+
+    .btn.primary:hover {
+      background: var(--teal-dark);
+      color: white;
+    }
+
+    .btn.danger:hover {
+      border-color: rgba(177, 59, 67, 0.46);
+      color: var(--red);
+    }
+
+    .icon {
+      width: 1.1em;
+      height: 1.1em;
+      display: inline-block;
+      line-height: 1;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .notice {
+      background: #fff9e9;
+      border: 1px solid #ecd9ae;
+      border-left: 5px solid var(--amber);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #5d4721;
+      margin: 0 0 18px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 16px;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+
+    .nav-title {
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      margin: 4px 0 10px;
+    }
+
+    .nav {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .nav a {
+      color: var(--ink);
+      text-decoration: none;
+      padding: 9px 10px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .nav a:hover {
+      background: var(--panel-soft);
+      color: var(--teal-dark);
+    }
+
+    .mini {
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .progress-ring {
+      --value: 0;
+      width: 148px;
+      height: 148px;
+      border-radius: 50%;
+      margin: 14px auto 8px;
+      background:
+        radial-gradient(circle at center, var(--panel) 0 55%, transparent 56%),
+        conic-gradient(var(--green) calc(var(--value) * 1%), #e2e8e5 0);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px var(--line);
+    }
+
+    .progress-ring strong {
+      font-size: 2.2rem;
+      line-height: 1;
+    }
+
+    .progress-ring span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.74rem;
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    .content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .section {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px 18px 0;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: 0;
+    }
+
+    .section-head p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      max-width: 760px;
+    }
+
+    .section-body {
+      padding: 18px;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 14px;
+      min-height: 134px;
+      display: grid;
+      align-content: space-between;
+      gap: 14px;
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 750;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .kpi-value {
+      font-size: clamp(1.9rem, 4vw, 3rem);
+      line-height: 0.95;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .kpi-detail {
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .bar {
+      height: 10px;
+      border-radius: 999px;
+      background: #e2e8e5;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, var(--teal), var(--green));
+      border-radius: inherit;
+      transition: width 180ms ease;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .tabs,
+    .filter-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .tab,
+    .chip-button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 999px;
+      min-height: 34px;
+      padding: 0 12px;
+      cursor: pointer;
+    }
+
+    .tab[aria-selected="true"],
+    .chip-button.active {
+      background: var(--teal);
+      color: white;
+      border-color: var(--teal);
+    }
+
+    .search {
+      position: relative;
+      min-width: min(320px, 100%);
+      flex: 1 1 260px;
+    }
+
+    .search input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 40px;
+      padding: 0 12px;
+      background: white;
+      color: var(--ink);
+    }
+
+    .stage-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stage-card,
+    .branch-card,
+    .gate-card,
+    .loop-step,
+    .next-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .stage-card {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      min-height: 168px;
+    }
+
+    .stage-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .stage-card h3,
+    .branch-card h3,
+    .gate-card h3,
+    .next-item h3 {
+      margin: 0;
+      font-size: 0.98rem;
+      letter-spacing: 0;
+    }
+
+    .stage-card p,
+    .branch-card p,
+    .gate-card p,
+    .next-item p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      border-radius: 999px;
+      padding: 0 9px;
+      font-size: 0.76rem;
+      font-weight: 750;
+      color: #243238;
+      background: #e8eeee;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge.done {
+      background: #e5f2e8;
+      color: #255b33;
+      border-color: #bfdfc5;
+    }
+
+    .badge.active {
+      background: #e7eefc;
+      color: #2d549b;
+      border-color: #c5d4f2;
+    }
+
+    .badge.blocked {
+      background: #f9e7e8;
+      color: #8e2f36;
+      border-color: #e8c5c8;
+    }
+
+    .badge.warning {
+      background: #fff2d7;
+      color: #805114;
+      border-color: #ebd099;
+    }
+
+    .badge.todo {
+      background: #edf1ef;
+      color: #5b686b;
+      border-color: #dbe4e1;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+      gap: 12px;
+    }
+
+    .branch-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .branch-card {
+      padding: 12px;
+      min-height: 136px;
+      display: grid;
+      gap: 10px;
+      align-content: space-between;
+    }
+
+    .branch-card select,
+    .task-status,
+    .gate-status {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 36px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 9px;
+    }
+
+    .loop-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .loop-step {
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      min-height: 132px;
+      border-left: 4px solid var(--line);
+    }
+
+    .loop-step.good {
+      border-left-color: var(--green);
+    }
+
+    .loop-step.partial {
+      border-left-color: var(--blue);
+    }
+
+    .loop-step.risk {
+      border-left-color: var(--amber);
+    }
+
+    .loop-step.waiting {
+      border-left-color: #aebbb8;
+    }
+
+    .loop-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      background: var(--panel-soft);
+      font-weight: 800;
+      color: var(--teal-dark);
+    }
+
+    .task-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .task-table th,
+    .task-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .task-table th {
+      background: var(--panel-soft);
+      color: #34494f;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .task-table tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .task-id {
+      width: 72px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .task-stage {
+      width: 190px;
+      color: var(--teal-dark);
+      font-weight: 700;
+    }
+
+    .task-status-col {
+      width: 148px;
+    }
+
+    .task-title {
+      min-width: 220px;
+    }
+
+    .gate-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .gate-card {
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .gate-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .gate-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 136px;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .gate-list span {
+      color: #33474d;
+      font-size: 0.91rem;
+    }
+
+    .next-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .next-item {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 118px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .notes {
+      min-height: 160px;
+      width: 100%;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--ink);
+      background: white;
+    }
+
+    .report {
+      border: 1px dashed #b8c8c3;
+      border-radius: 8px;
+      background: #fbfcfb;
+      padding: 14px;
+      color: #33474d;
+      white-space: pre-wrap;
+      min-height: 140px;
+    }
+
+    .footer {
+      color: var(--muted);
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.86rem;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 16px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fbfcfb;
+    }
+
+    @media (max-width: 1120px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .nav {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .kpi-grid,
+      .branch-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .stage-grid,
+      .loop-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 760px) {
+      .shell {
+        width: min(100% - 20px, 720px);
+        padding-top: 14px;
+      }
+
+      .topbar,
+      .section-head,
+      .split,
+      .next-item {
+        grid-template-columns: 1fr;
+        display: grid;
+      }
+
+      .actions {
+        justify-content: stretch;
+      }
+
+      .actions .btn {
+        flex: 1 1 130px;
+      }
+
+      .nav,
+      .kpi-grid,
+      .stage-grid,
+      .branch-grid,
+      .loop-grid,
+      .gate-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .task-table,
+      .task-table tbody,
+      .task-table tr,
+      .task-table td {
+        display: block;
+        width: 100%;
+      }
+
+      .task-table thead {
+        display: none;
+      }
+
+      .task-table tr {
+        border-bottom: 1px solid var(--line);
+        padding: 8px;
+      }
+
+      .task-table td {
+        border-bottom: 0;
+        padding: 6px 4px;
+      }
+
+      .task-table td::before {
+        content: attr(data-label);
+        display: block;
+        color: var(--muted);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        margin-bottom: 2px;
+      }
+
+      .gate-list li {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .actions,
+      .sidebar,
+      .toolbar,
+      .notice {
+        display: none;
+      }
+
+      .shell {
+        width: 100%;
+        padding: 0;
+      }
+
+      .dashboard {
+        display: block;
+      }
+
+      .section {
+        box-shadow: none;
+        break-inside: avoid;
+        margin-bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">AC</div>
+        <div>
+          <h1>AgriControl Task Management</h1>
+          <p>ESP32 Virtual Control Lab progress report based on the system blueprint.</p>
+        </div>
+      </div>
+      <div class="actions" aria-label="Dashboard actions">
+        <a class="btn" href="./ESP32_Virtual_Control_Lab_Blueprint.pdf" target="_blank" rel="noreferrer">
+          <span class="icon" aria-hidden="true">PDF</span>
+          Blueprint
+        </a>
+        <button class="btn" id="printBtn" type="button" title="Print or save the current report">
+          <span class="icon" aria-hidden="true">PR</span>
+          Print
+        </button>
+        <button class="btn primary" id="exportBtn" type="button" title="Download the current progress data">
+          <span class="icon" aria-hidden="true">JS</span>
+          Export
+        </button>
+      </div>
+    </header>
+
+    <p class="notice">
+      Baseline loaded from the blueprint: document-defined planning items start as complete or drafted, while hardware, firmware, bridge, scenario, replay, and platform work remain open until updated here.
+    </p>
+
+    <main class="dashboard">
+      <aside class="sidebar" aria-label="Project navigation">
+        <div class="nav-title">Project Progress</div>
+        <div class="progress-ring" id="overallRing" style="--value: 0">
+          <div>
+            <strong id="overallPercent">0%</strong>
+            <span>overall</span>
+          </div>
+        </div>
+        <nav class="nav">
+          <a href="#overview">Overview <span class="mini" id="navOverview">0%</span></a>
+          <a href="#roadmap">Roadmap <span class="mini">82</span></a>
+          <a href="#branches">Branches <span class="mini">16</span></a>
+          <a href="#loop">Control Loop <span class="mini">12</span></a>
+          <a href="#gates">Gates <span class="mini">A-E</span></a>
+          <a href="#report">Report <span class="mini">Live</span></a>
+        </nav>
+        <div class="nav-title">Controls</div>
+        <div class="nav">
+          <button class="btn" id="markNextBtn" type="button" title="Move the next open tasks into active status">Mark Next Active</button>
+          <button class="btn danger" id="resetBtn" type="button" title="Reset local progress to the blueprint baseline">Reset Baseline</button>
+        </div>
+      </aside>
+
+      <div class="content">
+        <section class="section" id="overview">
+          <div class="section-head">
+            <div>
+              <h2>Blueprint Indicators</h2>
+              <p>Progress is calculated from roadmap tasks, branch readiness, completion gates, and the central control loop contract.</p>
+            </div>
+            <span class="badge active" id="updatedAt">Updated now</span>
+          </div>
+          <div class="section-body">
+            <div class="kpi-grid" aria-label="Top project metrics">
+              <article class="kpi">
+                <div class="kpi-label">Roadmap execution</div>
+                <div>
+                  <div class="kpi-value" id="roadmapPercent">0%</div>
+                  <div class="bar" aria-hidden="true"><i id="roadmapBar"></i></div>
+                </div>
+                <div class="kpi-detail" id="roadmapDetail">0 of 82 tasks complete</div>
+              </article>
+              <article class="kpi">
+                <div class="kpi-label">Branch readiness</div>
+                <div>
+                  <div class="kpi-value" id="branchPercent">0%</div>
+                  <div class="bar" aria-hidden="true"><i id="branchBar"></i></div>
+                </div>
+                <div class="kpi-detail" id="branchDetail">16 blueprint branches tracked</div>
+              </article>
+              <article class="kpi">
+                <div class="kpi-label">Completion gates</div>
+                <div>
+                  <div class="kpi-value" id="gatePercent">0%</div>
+                  <div class="bar" aria-hidden="true"><i id="gateBar"></i></div>
+                </div>
+                <div class="kpi-detail" id="gateDetail">Gate A-E acceptance criteria</div>
+              </article>
+              <article class="kpi">
+                <div class="kpi-label">Control loop coverage</div>
+                <div>
+                  <div class="kpi-value" id="loopPercent">0%</div>
+                  <div class="bar" aria-hidden="true"><i id="loopBar"></i></div>
+                </div>
+                <div class="kpi-detail" id="loopDetail">12 loop steps mapped to branches</div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="next">
+          <div class="section-head">
+            <div>
+              <h2>Next Work</h2>
+              <p>The next open tasks follow the blueprint critical path: requirements, contracts, decision and safety logic, outputs, communication, then verification.</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="next-list" id="nextList"></div>
+          </div>
+        </section>
+
+        <section class="section" id="roadmap">
+          <div class="section-head">
+            <div>
+              <h2>Development Roadmap</h2>
+              <p>Twelve stages from foundation work through platform packaging, directly matching the blueprint order.</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="stage-grid" id="stageGrid"></div>
+          </div>
+          <div class="section-body">
+            <div class="toolbar">
+              <div class="tabs" role="tablist" aria-label="Task status filter">
+                <button class="tab" type="button" data-filter="all" aria-selected="true">All</button>
+                <button class="tab" type="button" data-filter="todo">Open</button>
+                <button class="tab" type="button" data-filter="active">Active</button>
+                <button class="tab" type="button" data-filter="blocked">Blocked</button>
+                <button class="tab" type="button" data-filter="done">Done</button>
+              </div>
+              <label class="search">
+                <span class="mini">Search tasks</span>
+                <input id="taskSearch" type="search" autocomplete="off" placeholder="Filter by stage, task, or number">
+              </label>
+            </div>
+            <table class="task-table" aria-label="Blueprint roadmap tasks">
+              <thead>
+                <tr>
+                  <th class="task-id">Step</th>
+                  <th class="task-stage">Stage</th>
+                  <th class="task-title">Task</th>
+                  <th class="task-status-col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="taskRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section" id="branches">
+          <div class="section-head">
+            <div>
+              <h2>Branch Readiness</h2>
+              <p>Each branch is tracked against the blueprint responsibility boundary so interface work stays explicit.</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="branch-grid" id="branchGrid"></div>
+          </div>
+        </section>
+
+        <section class="section" id="loop">
+          <div class="section-head">
+            <div>
+              <h2>Central Control Loop</h2>
+              <p>Coverage is inferred from branch readiness. No sensor, actuator, interface, or communication path should bypass this loop.</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="loop-grid" id="loopGrid"></div>
+          </div>
+        </section>
+
+        <section class="section" id="gates">
+          <div class="section-head">
+            <div>
+              <h2>Completion Gates</h2>
+              <p>Gate A proves the first vertical slice; later gates add the greenhouse MVP, test platform, physical migration, and product expansion.</p>
+            </div>
+          </div>
+          <div class="section-body">
+            <div class="gate-grid" id="gateGrid"></div>
+          </div>
+        </section>
+
+        <section class="section" id="report">
+          <div class="section-head">
+            <div>
+              <h2>Progress Report</h2>
+              <p>Notes are saved in this browser and included in exported progress data.</p>
+            </div>
+          </div>
+          <div class="section-body split">
+            <div>
+              <label for="notes" class="nav-title">Project Notes</label>
+              <textarea class="notes" id="notes" placeholder="Add progress notes, blockers, hardware findings, or next demo targets."></textarea>
+            </div>
+            <div>
+              <div class="nav-title">Current Summary</div>
+              <div class="report" id="summaryReport"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="footer">
+      Blueprint source: ESP32 Virtual Control Lab - Complete System Blueprint, Version 1.0, August 4, 2026.
+    </footer>
+  </div>
+
+  <script>
+    const STATUS_WEIGHT = {
+      todo: 0,
+      active: 0.45,
+      blocked: 0.15,
+      done: 1
+    };
+
+    const STATUS_LABELS = {
+      todo: "Open",
+      active: "Active",
+      blocked: "Blocked",
+      done: "Done"
+    };
+
+    const BRANCH_WEIGHT = {
+      planned: 0,
+      drafted: 0.35,
+      implemented: 0.7,
+      verified: 1
+    };
+
+    const BRANCH_LABELS = {
+      planned: "Planned",
+      drafted: "Drafted",
+      implemented: "Implemented",
+      verified: "Verified"
+    };
+
+    const stages = [
+      { id: 1, name: "Foundations", intent: "Board, wiring, use case, safe states, protocol, and acceptance tests." },
+      { id: 2, name: "Pure logic", intent: "Canonical state, decision rules, safety supervisor, and sequence tests." },
+      { id: 3, name: "Local physical outputs", intent: "OLED, NeoPixel, buzzer, servo, and output integration." },
+      { id: 4, name: "ESP runtime", intent: "Async runtime, shared state, events, stale data, recovery, and HTTP." },
+      { id: 5, name: "First vertical slice", intent: "Temperature input to ESP decision, servo, OLED, JSON response, and recovery." },
+      { id: 6, name: "Browser and FastAPI", intent: "Bridge, website controls, virtual window, event log, and endurance updates." },
+      { id: 7, name: "Irrigation slice", intent: "Soil, tank, rain, pump hysteresis, protections, virtual actuators, warnings." },
+      { id: 8, name: "Scenario testing", intent: "Preset scenarios with expected commands, alarm, mode, response time, and pass/fail." },
+      { id: 9, name: "Closed-loop simulation", intent: "Actuator feedback, delays, failed starts, stuck faults, and servo mismatch." },
+      { id: 10, name: "Reliability", intent: "Recording, replay, rule versions, endurance, watchdog decision, and limits." },
+      { id: 11, name: "Physical migration", intent: "Physical sensors, source selection, pump driver, and feedback evidence." },
+      { id: 12, name: "Platform growth", intent: "MQTT, multi-device, storage, authentication, remote access, and packaging." }
+    ];
+
+    const tasks = [
+      { id: 1, stage: 1, title: "Confirm the exact ESP32-C3 board." },
+      { id: 2, stage: 1, title: "Record the MicroPython version." },
+      { id: 3, stage: 1, title: "Create the complete pin map." },
+      { id: 4, stage: 1, title: "Verify OLED, NeoPixel, buzzer, and servo wiring." },
+      { id: 5, stage: 1, title: "Define the first use case." },
+      { id: 6, stage: 1, title: "Define safe states." },
+      { id: 7, stage: 1, title: "Define the communication protocol." },
+      { id: 8, stage: 1, title: "Define acceptance tests." },
+      { id: 9, stage: 2, title: "Create canonical sensor structures." },
+      { id: 10, stage: 2, title: "Create system and actuator state structures." },
+      { id: 11, stage: 2, title: "Implement the stateful decision engine on the computer." },
+      { id: 12, stage: 2, title: "Implement the safety supervisor." },
+      { id: 13, stage: 2, title: "Test normal conditions." },
+      { id: 14, stage: 2, title: "Test exact boundaries." },
+      { id: 15, stage: 2, title: "Test conflicting rules." },
+      { id: 16, stage: 2, title: "Test state sequences." },
+      { id: 17, stage: 3, title: "Test OLED independently." },
+      { id: 18, stage: 3, title: "Test NeoPixel independently." },
+      { id: 19, stage: 3, title: "Test buzzer independently." },
+      { id: 20, stage: 3, title: "Test servo independently." },
+      { id: 21, stage: 3, title: "Test all outputs together." },
+      { id: 22, stage: 3, title: "Connect hardcoded decisions to outputs." },
+      { id: 23, stage: 3, title: "Confirm servo power does not reset the ESP." },
+      { id: 24, stage: 4, title: "Build the asynchronous runtime." },
+      { id: 25, stage: 4, title: "Add shared state management." },
+      { id: 26, stage: 4, title: "Add the event system." },
+      { id: 27, stage: 4, title: "Add stale-data detection." },
+      { id: 28, stage: 4, title: "Add recovery logic." },
+      { id: 29, stage: 4, title: "Add the HTTP server." },
+      { id: 30, stage: 4, title: "Add request-size and validation limits." },
+      { id: 31, stage: 5, title: "Implement only virtual temperature." },
+      { id: 32, stage: 5, title: "Send temperature with curl." },
+      { id: 33, stage: 5, title: "Validate the message." },
+      { id: 34, stage: 5, title: "Calculate the window command." },
+      { id: 35, stage: 5, title: "Apply the servo command." },
+      { id: 36, stage: 5, title: "Display the reason on OLED." },
+      { id: 37, stage: 5, title: "Return the decision as JSON." },
+      { id: 38, stage: 5, title: "Test repeated messages." },
+      { id: 39, stage: 5, title: "Test invalid values." },
+      { id: 40, stage: 5, title: "Test timeout and recovery." },
+      { id: 41, stage: 6, title: "Create the local FastAPI bridge." },
+      { id: 42, stage: 6, title: "Forward temperature to the ESP." },
+      { id: 43, stage: 6, title: "Create the website connection panel." },
+      { id: 44, stage: 6, title: "Create one temperature slider." },
+      { id: 45, stage: 6, title: "Display the ESP response." },
+      { id: 46, stage: 6, title: "Display the virtual window." },
+      { id: 47, stage: 6, title: "Add an event log." },
+      { id: 48, stage: 6, title: "Run hundreds of updates." },
+      { id: 49, stage: 7, title: "Add soil moisture." },
+      { id: 50, stage: 7, title: "Add tank level." },
+      { id: 51, stage: 7, title: "Add rain." },
+      { id: 52, stage: 7, title: "Add pump hysteresis." },
+      { id: 53, stage: 7, title: "Add low-tank protection." },
+      { id: 54, stage: 7, title: "Add rain protection." },
+      { id: 55, stage: 7, title: "Add virtual pump and fan." },
+      { id: 56, stage: 7, title: "Connect LED and buzzer warnings." },
+      { id: 57, stage: 7, title: "Add corresponding OLED pages." },
+      { id: 58, stage: 8, title: "Add normal, hot, dry-soil, low-tank, rain, invalid-data, and communication-loss scenarios." },
+      { id: 59, stage: 8, title: "Define expected commands, mode, alarm, and response time." },
+      { id: 60, stage: 8, title: "Add automatic PASS/FAIL comparison." },
+      { id: 61, stage: 9, title: "Add simulated actuator feedback." },
+      { id: 62, stage: 9, title: "Add startup delays." },
+      { id: 63, stage: 9, title: "Add failed startup." },
+      { id: 64, stage: 9, title: "Add stuck-on and stuck-off faults." },
+      { id: 65, stage: 9, title: "Add incorrect virtual servo position." },
+      { id: 66, stage: 9, title: "Make the ESP respond to feedback faults." },
+      { id: 67, stage: 10, title: "Add recording and replay." },
+      { id: 68, stage: 10, title: "Add rule versioning." },
+      { id: 69, stage: 10, title: "Run long-duration tests." },
+      { id: 70, stage: 10, title: "Add a watchdog only after runtime stability." },
+      { id: 71, stage: 10, title: "Document known limits." },
+      { id: 72, stage: 11, title: "Add a real temperature sensor." },
+      { id: 73, stage: 11, title: "Add per-sensor source selection." },
+      { id: 74, stage: 11, title: "Add real soil, tank, and rain sensors." },
+      { id: 75, stage: 11, title: "Add a properly driven pump." },
+      { id: 76, stage: 11, title: "Add physical feedback where possible." },
+      { id: 77, stage: 12, title: "Add MQTT." },
+      { id: 78, stage: 12, title: "Add multiple ESP devices." },
+      { id: 79, stage: 12, title: "Add persistent storage." },
+      { id: 80, stage: 12, title: "Add authentication." },
+      { id: 81, stage: 12, title: "Add remote access." },
+      { id: 82, stage: 12, title: "Package the system as a reusable control and testing platform." }
+    ];
+
+    const branches = [
+      { id: 1, name: "Product definition", purpose: "Mission, sensors, actuators, qualities, constraints." },
+      { id: 2, name: "Website simulation", purpose: "Virtual conditions, scenarios, faults, dashboards." },
+      { id: 3, name: "FastAPI bridge", purpose: "Browser-to-ESP communication, sessions, logs, replay, tests." },
+      { id: 4, name: "Protocol", purpose: "Stable messages and validation rules." },
+      { id: 5, name: "ESP communication", purpose: "Move data without deciding behavior." },
+      { id: 6, name: "Sensor abstraction", purpose: "Virtual and physical inputs become canonical state." },
+      { id: 7, name: "State management", purpose: "Authoritative sensor, system, and actuator state." },
+      { id: 8, name: "Decision engine", purpose: "Normal requested actions with reasons and rule IDs." },
+      { id: 9, name: "Safety supervisor", purpose: "Final authority and conflict resolution." },
+      { id: 10, name: "Actuator abstraction", purpose: "Requested, commanded, simulated, measured, and fault states." },
+      { id: 11, name: "Physical outputs", purpose: "OLED, LED, buzzer, and servo behavior." },
+      { id: 12, name: "Observability", purpose: "Meaningful events and state changes." },
+      { id: 13, name: "Testing", purpose: "Logic, integration, failure, endurance, and replay verification." },
+      { id: 14, name: "Recording and replay", purpose: "Experiment reproduction and regression comparison." },
+      { id: 15, name: "Physical expansion", purpose: "Gradual replacement of virtual components." },
+      { id: 16, name: "Platform expansion", purpose: "MQTT, multi-device, database, authentication, SaaS." }
+    ];
+
+    const loopSteps = [
+      { id: 1, title: "Create sensor conditions", branches: [2], detail: "Manual controls or scenario engine." },
+      { id: 2, title: "Transmit versioned sensor message", branches: [3, 4], detail: "Session, sequence, timestamp, and values." },
+      { id: 3, title: "Validate packet", branches: [4, 5], detail: "Protocol, session, size, type, and range checks." },
+      { id: 4, title: "Update canonical sensor state", branches: [6, 7], detail: "Source, quality, age, validity, and value." },
+      { id: 5, title: "Calculate requested actions", branches: [8], detail: "Decision rules and stateful hysteresis." },
+      { id: 6, title: "Apply safety priorities", branches: [9], detail: "Emergency, safety, protection, automatic, manual." },
+      { id: 7, title: "Generate final commands", branches: [9, 10], detail: "Commanded state after overrides." },
+      { id: 8, title: "Apply physical and virtual outputs", branches: [10, 11, 2], detail: "Servo, OLED, LED, buzzer, pump, fan, window." },
+      { id: 9, title: "Receive actuator feedback", branches: [10], detail: "Simulated or measured response evidence." },
+      { id: 10, title: "Detect mismatch or failure", branches: [9, 10, 13], detail: "Success, delay, mismatch, or fault." },
+      { id: 11, title: "Update UI, outputs, and history", branches: [11, 12, 2], detail: "OLED, LED, buzzer, website timeline, test result." },
+      { id: 12, title: "Repeat without blocking", branches: [5, 7, 13], detail: "Runtime stability and recovery." }
+    ];
+
+    const gates = [
+      {
+        id: "A",
+        name: "First vertical slice",
+        criteria: [
+          "Temperature message accepted and validated",
+          "Correct window command at all boundaries",
+          "Servo moves without resetting the ESP",
+          "OLED shows value and reason",
+          "Website receives the response",
+          "Timeout enters defined safe state",
+          "Recovery requires stable valid messages"
+        ]
+      },
+      {
+        id: "B",
+        name: "Greenhouse MVP",
+        criteria: [
+          "Temperature, soil, tank, and rain supported",
+          "Pump hysteresis works",
+          "Low tank and rain override irrigation",
+          "OLED, LED, buzzer, and servo are coherent",
+          "Preset scenarios pass automatically",
+          "Commanded and simulated states are separate"
+        ]
+      },
+      {
+        id: "C",
+        name: "Test platform",
+        criteria: [
+          "Actuator failures can be injected",
+          "Feedback faults change ESP behavior",
+          "Sessions can be recorded and replayed",
+          "Regression results compare firmware or rule versions",
+          "Endurance run completes without unrecovered failure"
+        ]
+      },
+      {
+        id: "D",
+        name: "Physical migration",
+        criteria: [
+          "At least one physical sensor can replace its virtual counterpart",
+          "Per-sensor source selection works",
+          "Decision and safety code does not require rewriting",
+          "Virtual mode remains available for testing"
+        ]
+      },
+      {
+        id: "E",
+        name: "Platform expansion",
+        criteria: [
+          "Multiple devices justify MQTT",
+          "Persistent history justifies a database",
+          "Remote users justify authentication",
+          "A repeatable customer workflow justifies SaaS packaging"
+        ]
+      }
+    ];
+
+    const baseline = {
+      tasks: {
+        "5": "done",
+        "6": "done",
+        "7": "done",
+        "8": "done",
+        "9": "active",
+        "10": "active",
+        "11": "active",
+        "12": "active"
+      },
+      branches: {
+        "1": "verified",
+        "4": "drafted",
+        "6": "drafted",
+        "7": "drafted",
+        "8": "drafted",
+        "9": "drafted",
+        "12": "drafted",
+        "13": "drafted"
+      },
+      gates: {},
+      notes: "Initial public progress page created from the ESP32 Virtual Control Lab blueprint."
+    };
+
+    for (const gate of gates) {
+      gate.criteria.forEach((_, index) => {
+        baseline.gates[`${gate.id}-${index}`] = "todo";
+      });
+    }
+
+    const STORAGE_KEY = "agricontrol-taskmanagement-v1";
+    let state = loadState();
+    let activeFilter = "all";
+
+    const elements = {
+      overallRing: document.getElementById("overallRing"),
+      overallPercent: document.getElementById("overallPercent"),
+      navOverview: document.getElementById("navOverview"),
+      roadmapPercent: document.getElementById("roadmapPercent"),
+      roadmapBar: document.getElementById("roadmapBar"),
+      roadmapDetail: document.getElementById("roadmapDetail"),
+      branchPercent: document.getElementById("branchPercent"),
+      branchBar: document.getElementById("branchBar"),
+      branchDetail: document.getElementById("branchDetail"),
+      gatePercent: document.getElementById("gatePercent"),
+      gateBar: document.getElementById("gateBar"),
+      gateDetail: document.getElementById("gateDetail"),
+      loopPercent: document.getElementById("loopPercent"),
+      loopBar: document.getElementById("loopBar"),
+      loopDetail: document.getElementById("loopDetail"),
+      updatedAt: document.getElementById("updatedAt"),
+      stageGrid: document.getElementById("stageGrid"),
+      branchGrid: document.getElementById("branchGrid"),
+      loopGrid: document.getElementById("loopGrid"),
+      gateGrid: document.getElementById("gateGrid"),
+      taskRows: document.getElementById("taskRows"),
+      taskSearch: document.getElementById("taskSearch"),
+      nextList: document.getElementById("nextList"),
+      notes: document.getElementById("notes"),
+      summaryReport: document.getElementById("summaryReport")
+    };
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function loadState() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (stored && stored.tasks && stored.branches && stored.gates) {
+          return {
+            tasks: { ...baseline.tasks, ...stored.tasks },
+            branches: { ...baseline.branches, ...stored.branches },
+            gates: { ...baseline.gates, ...stored.gates },
+            notes: stored.notes || baseline.notes
+          };
+        }
+      } catch (error) {
+        console.warn("Could not load saved progress", error);
+      }
+      return clone(baseline);
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function statusForTask(id) {
+      return state.tasks[String(id)] || "todo";
+    }
+
+    function statusForBranch(id) {
+      return state.branches[String(id)] || "planned";
+    }
+
+    function statusForGate(id) {
+      return state.gates[id] || "todo";
+    }
+
+    function percent(value) {
+      return `${Math.round(value)}%`;
+    }
+
+    function average(values) {
+      if (!values.length) return 0;
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    }
+
+    function calcTaskProgress(stageId) {
+      const scoped = stageId ? tasks.filter((task) => task.stage === stageId) : tasks;
+      const value = average(scoped.map((task) => STATUS_WEIGHT[statusForTask(task.id)]));
+      const done = scoped.filter((task) => statusForTask(task.id) === "done").length;
+      const active = scoped.filter((task) => statusForTask(task.id) === "active").length;
+      const blocked = scoped.filter((task) => statusForTask(task.id) === "blocked").length;
+      return {
+        value: value * 100,
+        done,
+        active,
+        blocked,
+        total: scoped.length
+      };
+    }
+
+    function calcBranchProgress() {
+      const value = average(branches.map((branch) => BRANCH_WEIGHT[statusForBranch(branch.id)]));
+      const verified = branches.filter((branch) => statusForBranch(branch.id) === "verified").length;
+      const implemented = branches.filter((branch) => statusForBranch(branch.id) === "implemented").length;
+      const drafted = branches.filter((branch) => statusForBranch(branch.id) === "drafted").length;
+      return {
+        value: value * 100,
+        verified,
+        implemented,
+        drafted,
+        total: branches.length
+      };
+    }
+
+    function calcGateProgress() {
+      const values = [];
+      let done = 0;
+      let total = 0;
+      for (const gate of gates) {
+        gate.criteria.forEach((_, index) => {
+          const status = statusForGate(`${gate.id}-${index}`);
+          values.push(STATUS_WEIGHT[status]);
+          if (status === "done") done += 1;
+          total += 1;
+        });
+      }
+      return {
+        value: average(values) * 100,
+        done,
+        total
+      };
+    }
+
+    function loopStepValue(step) {
+      return average(step.branches.map((branchId) => BRANCH_WEIGHT[statusForBranch(branchId)])) * 100;
+    }
+
+    function calcLoopProgress() {
+      const values = loopSteps.map(loopStepValue);
+      return {
+        value: average(values),
+        covered: values.filter((value) => value >= 70).length,
+        partial: values.filter((value) => value > 0 && value < 70).length,
+        total: values.length
+      };
+    }
+
+    function setBar(bar, value) {
+      bar.style.width = `${Math.max(0, Math.min(100, value))}%`;
+    }
+
+    function badgeClassForStatus(status) {
+      if (status === "done" || status === "verified") return "done";
+      if (status === "active" || status === "implemented") return "active";
+      if (status === "blocked") return "blocked";
+      if (status === "drafted") return "warning";
+      return "todo";
+    }
+
+    function makeStatusSelect(value, type, id) {
+      const select = document.createElement("select");
+      select.className = type === "branch" ? "branch-status" : type === "gate" ? "gate-status" : "task-status";
+      select.dataset.type = type;
+      select.dataset.id = id;
+
+      const labels = type === "branch" ? BRANCH_LABELS : STATUS_LABELS;
+      Object.entries(labels).forEach(([status, label]) => {
+        const option = document.createElement("option");
+        option.value = status;
+        option.textContent = label;
+        option.selected = status === value;
+        select.appendChild(option);
+      });
+      return select;
+    }
+
+    function renderOverview() {
+      const task = calcTaskProgress();
+      const branch = calcBranchProgress();
+      const gate = calcGateProgress();
+      const loop = calcLoopProgress();
+      const overall = average([task.value, branch.value, gate.value, loop.value]);
+
+      elements.overallRing.style.setProperty("--value", String(Math.round(overall)));
+      elements.overallPercent.textContent = percent(overall);
+      elements.navOverview.textContent = percent(overall);
+
+      elements.roadmapPercent.textContent = percent(task.value);
+      elements.roadmapDetail.textContent = `${task.done} of ${task.total} tasks complete, ${task.active} active, ${task.blocked} blocked`;
+      setBar(elements.roadmapBar, task.value);
+
+      elements.branchPercent.textContent = percent(branch.value);
+      elements.branchDetail.textContent = `${branch.verified} verified, ${branch.implemented} implemented, ${branch.drafted} drafted`;
+      setBar(elements.branchBar, branch.value);
+
+      elements.gatePercent.textContent = percent(gate.value);
+      elements.gateDetail.textContent = `${gate.done} of ${gate.total} acceptance criteria complete`;
+      setBar(elements.gateBar, gate.value);
+
+      elements.loopPercent.textContent = percent(loop.value);
+      elements.loopDetail.textContent = `${loop.covered} covered, ${loop.partial} partially covered, ${loop.total} total steps`;
+      setBar(elements.loopBar, loop.value);
+
+      elements.updatedAt.textContent = `Updated ${new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
+    }
+
+    function renderStages() {
+      elements.stageGrid.innerHTML = "";
+      stages.forEach((stage) => {
+        const progress = calcTaskProgress(stage.id);
+        const article = document.createElement("article");
+        article.className = "stage-card";
+        article.innerHTML = `
+          <div class="stage-top">
+            <div>
+              <h3>Stage ${stage.id}. ${stage.name}</h3>
+              <p>${stage.intent}</p>
+            </div>
+            <span class="badge ${progress.blocked ? "blocked" : progress.value === 100 ? "done" : progress.active ? "active" : progress.value ? "warning" : "todo"}">${percent(progress.value)}</span>
+          </div>
+          <div class="bar" aria-hidden="true"><i style="width: ${progress.value}%"></i></div>
+          <div class="meta-row">
+            <span>${progress.done}/${progress.total} done</span>
+            <span>${progress.active} active</span>
+            <span>${progress.blocked} blocked</span>
+          </div>
+        `;
+        elements.stageGrid.appendChild(article);
+      });
+    }
+
+    function renderTasks() {
+      const search = elements.taskSearch.value.trim().toLowerCase();
+      elements.taskRows.innerHTML = "";
+      const visible = tasks.filter((task) => {
+        const stage = stages.find((item) => item.id === task.stage);
+        const status = statusForTask(task.id);
+        const filterMatch = activeFilter === "all" || status === activeFilter;
+        const text = `${task.id} ${stage.name} ${task.title}`.toLowerCase();
+        const searchMatch = !search || text.includes(search);
+        return filterMatch && searchMatch;
+      });
+
+      if (!visible.length) {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td colspan="4"><div class="empty">No tasks match this filter.</div></td>`;
+        elements.taskRows.appendChild(row);
+        return;
+      }
+
+      visible.forEach((task) => {
+        const stage = stages.find((item) => item.id === task.stage);
+        const status = statusForTask(task.id);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="task-id" data-label="Step">${task.id}</td>
+          <td class="task-stage" data-label="Stage">Stage ${task.stage}: ${stage.name}</td>
+          <td class="task-title" data-label="Task">
+            ${task.title}
+            <div class="meta-row"><span class="badge ${badgeClassForStatus(status)}">${STATUS_LABELS[status]}</span></div>
+          </td>
+          <td class="task-status-col" data-label="Status"></td>
+        `;
+        row.querySelector(".task-status-col").appendChild(makeStatusSelect(status, "task", task.id));
+        elements.taskRows.appendChild(row);
+      });
+    }
+
+    function renderBranches() {
+      elements.branchGrid.innerHTML = "";
+      branches.forEach((branch) => {
+        const status = statusForBranch(branch.id);
+        const card = document.createElement("article");
+        card.className = "branch-card";
+        card.innerHTML = `
+          <div>
+            <div class="meta-row"><span class="badge ${badgeClassForStatus(status)}">Branch ${branch.id}</span></div>
+            <h3>${branch.name}</h3>
+            <p>${branch.purpose}</p>
+          </div>
+          <div></div>
+        `;
+        card.lastElementChild.appendChild(makeStatusSelect(status, "branch", branch.id));
+        elements.branchGrid.appendChild(card);
+      });
+    }
+
+    function renderLoop() {
+      elements.loopGrid.innerHTML = "";
+      loopSteps.forEach((step) => {
+        const value = loopStepValue(step);
+        const className = value >= 70 ? "good" : value > 0 ? "partial" : value < 20 ? "waiting" : "risk";
+        const branchNames = step.branches.map((id) => branches.find((branch) => branch.id === id).name).join(", ");
+        const card = document.createElement("article");
+        card.className = `loop-step ${className}`;
+        card.innerHTML = `
+          <div class="stage-top">
+            <span class="loop-number">${step.id}</span>
+            <span class="badge ${value >= 70 ? "done" : value > 0 ? "active" : "todo"}">${percent(value)}</span>
+          </div>
+          <div>
+            <h3>${step.title}</h3>
+            <p>${step.detail}</p>
+          </div>
+          <div class="meta-row"><span>${branchNames}</span></div>
+        `;
+        elements.loopGrid.appendChild(card);
+      });
+    }
+
+    function renderGates() {
+      elements.gateGrid.innerHTML = "";
+      gates.forEach((gate) => {
+        const values = gate.criteria.map((_, index) => STATUS_WEIGHT[statusForGate(`${gate.id}-${index}`)]);
+        const gateValue = average(values) * 100;
+        const card = document.createElement("article");
+        card.className = "gate-card";
+        const list = document.createElement("ul");
+        list.className = "gate-list";
+        gate.criteria.forEach((criterion, index) => {
+          const id = `${gate.id}-${index}`;
+          const status = statusForGate(id);
+          const li = document.createElement("li");
+          const label = document.createElement("span");
+          label.textContent = criterion;
+          li.appendChild(label);
+          li.appendChild(makeStatusSelect(status, "gate", id));
+          list.appendChild(li);
+        });
+        card.innerHTML = `
+          <div class="stage-top">
+            <div>
+              <h3>Gate ${gate.id}. ${gate.name}</h3>
+              <p>${gate.criteria.length} blueprint criteria</p>
+            </div>
+            <span class="badge ${gateValue === 100 ? "done" : gateValue > 0 ? "active" : "todo"}">${percent(gateValue)}</span>
+          </div>
+          <div class="bar" aria-hidden="true"><i style="width: ${gateValue}%"></i></div>
+        `;
+        card.appendChild(list);
+        elements.gateGrid.appendChild(card);
+      });
+    }
+
+    function renderNextWork() {
+      const open = tasks
+        .filter((task) => statusForTask(task.id) !== "done")
+        .slice(0, 5);
+      elements.nextList.innerHTML = "";
+      if (!open.length) {
+        elements.nextList.innerHTML = `<div class="empty">All roadmap tasks are marked complete.</div>`;
+        return;
+      }
+      open.forEach((task) => {
+        const stage = stages.find((item) => item.id === task.stage);
+        const status = statusForTask(task.id);
+        const item = document.createElement("article");
+        item.className = "next-item";
+        item.innerHTML = `
+          <div>
+            <h3>Step ${task.id}: ${task.title}</h3>
+            <p>Stage ${task.stage}. ${stage.name}</p>
+          </div>
+          <span class="badge ${badgeClassForStatus(status)}">${STATUS_LABELS[status]}</span>
+        `;
+        elements.nextList.appendChild(item);
+      });
+    }
+
+    function renderReport() {
+      const task = calcTaskProgress();
+      const branch = calcBranchProgress();
+      const gate = calcGateProgress();
+      const loop = calcLoopProgress();
+      const blockedTasks = tasks.filter((item) => statusForTask(item.id) === "blocked").map((item) => `#${item.id} ${item.title}`);
+      const nextTasks = tasks.filter((item) => statusForTask(item.id) !== "done").slice(0, 3).map((item) => `#${item.id} ${item.title}`);
+      const notes = state.notes.trim() || "No notes recorded.";
+
+      elements.summaryReport.textContent = [
+        `Overall progress: ${percent(average([task.value, branch.value, gate.value, loop.value]))}`,
+        `Roadmap: ${percent(task.value)} (${task.done}/${task.total} complete)`,
+        `Branches: ${percent(branch.value)} (${branch.verified} verified, ${branch.implemented} implemented, ${branch.drafted} drafted)`,
+        `Gates: ${percent(gate.value)} (${gate.done}/${gate.total} criteria complete)`,
+        `Control loop: ${percent(loop.value)} (${loop.covered}/${loop.total} steps covered)`,
+        ``,
+        `Next work: ${nextTasks.length ? nextTasks.join("; ") : "None"}`,
+        `Blocked: ${blockedTasks.length ? blockedTasks.join("; ") : "None"}`,
+        ``,
+        `Notes: ${notes}`
+      ].join("\n");
+    }
+
+    function renderAll() {
+      renderOverview();
+      renderStages();
+      renderTasks();
+      renderBranches();
+      renderLoop();
+      renderGates();
+      renderNextWork();
+      renderReport();
+    }
+
+    function exportProgress() {
+      const task = calcTaskProgress();
+      const branch = calcBranchProgress();
+      const gate = calcGateProgress();
+      const loop = calcLoopProgress();
+      const payload = {
+        project: "AgriControl - ESP32 Virtual Control Lab",
+        blueprint: "ESP32 Virtual Control Lab - Complete System Blueprint v1.0",
+        exported_at: new Date().toISOString(),
+        indicators: {
+          overall_percent: Math.round(average([task.value, branch.value, gate.value, loop.value])),
+          roadmap_percent: Math.round(task.value),
+          branch_percent: Math.round(branch.value),
+          gate_percent: Math.round(gate.value),
+          control_loop_percent: Math.round(loop.value)
+        },
+        state
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "agricontrol-progress-report.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    document.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      const { type, id } = target.dataset;
+      if (type === "task") state.tasks[String(id)] = target.value;
+      if (type === "branch") state.branches[String(id)] = target.value;
+      if (type === "gate") state.gates[String(id)] = target.value;
+      saveState();
+      renderAll();
+    });
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach((item) => item.setAttribute("aria-selected", "false"));
+        tab.setAttribute("aria-selected", "true");
+        activeFilter = tab.dataset.filter;
+        renderTasks();
+      });
+    });
+
+    elements.taskSearch.addEventListener("input", renderTasks);
+    elements.notes.value = state.notes;
+    elements.notes.addEventListener("input", () => {
+      state.notes = elements.notes.value;
+      saveState();
+      renderReport();
+    });
+
+    document.getElementById("exportBtn").addEventListener("click", exportProgress);
+    document.getElementById("printBtn").addEventListener("click", () => window.print());
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      const confirmed = window.confirm("Reset local dashboard progress to the blueprint baseline?");
+      if (!confirmed) return;
+      state = clone(baseline);
+      elements.notes.value = state.notes;
+      saveState();
+      renderAll();
+    });
+    document.getElementById("markNextBtn").addEventListener("click", () => {
+      tasks
+        .filter((task) => statusForTask(task.id) === "todo")
+        .slice(0, 5)
+        .forEach((task) => {
+          state.tasks[String(task.id)] = "active";
+        });
+      saveState();
+      renderAll();
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
