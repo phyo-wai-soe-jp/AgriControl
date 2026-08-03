@@ -43,17 +43,21 @@
     {
       "id": "agent-02-hardware",
       "role": "Hardware facts agent",
-      "model": "Unassigned",
+      "model": "Claude Sonnet 5",
       "status": "needs_owner",
-      "current_work": "Collect exact ESP32-C3 board, MicroPython version, pin map, wiring evidence, and servo power stability.",
-      "done_work": [],
-      "next_work": "Ask the owner for board model, firmware version, pin map, and hardware verification notes.",
+      "current_work": "Board, pin map, and OLED/NeoPixel/buzzer/servo-header wiring confirmed from the owner-provided ESP32-C3M-TRY manual. Drafted Stage 3 firmware test scripts against the confirmed pin map. Still needs the owner for the on-device MicroPython version and the greenhouse-specific servo/pump/fan wiring plan.",
+      "done_work": [
+        "Confirmed board: ESP32-C3M-TRY (MicroFan), module ESP32-C3-MINI-1 (RISC-V, 4MB flash), from ESP32-C3M-TRY-R1-20230701.pdf.",
+        "Recorded the complete pin map (Table 5.2) in firmware/README.md.",
+        "Confirmed OLED (I2C scl=D9/sda=D8), NeoPixel (D10, x3), and buzzer (D21, PWM) wiring with working code references from the manual.",
+        "Drafted firmware/boot.py and firmware/test_oled.py, test_neopixel.py, test_buzzer.py, test_servo.py for Stage 3 tasks 17-20, unverified on physical hardware."
+      ],
+      "next_work": "Owner: run firmware/test_*.py on the physical board via Thonny and report results; confirm on-device MicroPython version (sys.implementation); confirm the RC servo model/power source at CN3; decide spare GPIO/relay assignment for pump and fan (not built into this eval board).",
       "needs_owner": true,
       "owner_questions": [
-        "Which exact ESP32-C3 board is being used?",
-        "What MicroPython version is installed?",
-        "Which GPIO pins connect OLED, NeoPixel, buzzer, and servo?",
-        "Is the servo powered separately enough to avoid ESP reset?"
+        "What MicroPython version is currently flashed on the physical ESP32-C3M-TRY unit?",
+        "Which RC servo model is connected to CN3 (pin D7), and is it powered separately from USB 5V?",
+        "Which spare pins should drive the pump and fan relays, since this eval board has no built-in pump/fan output?"
       ],
       "blueprint_scope": ["Stage 1", "Stage 3", "Gate A"]
     },

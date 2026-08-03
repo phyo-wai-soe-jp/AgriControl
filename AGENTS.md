@@ -9,14 +9,16 @@ Before changing project status, source, firmware, backend code, or the hosted
 dashboard, read these files in order:
 
 1. `ESP32_Virtual_Control_Lab_Blueprint.pdf`
-2. `docs/PROJECT_STATE.md`
-3. `docs/AI_CONTINUITY_SYSTEM.md`
-4. `docs/AI_AGENT_GUIDE.md`
-5. `docs/PROMPT_TEST_LIBRARY.md`
-6. `data/progress-baseline.json`
-7. `data/agent-coordination.json`
-8. `data/prompt-test-library.json`
-9. `web-build/index.html`
+2. `ESP32-C3M-TRY-R1-20230701.pdf` (confirmed board manual, when touching
+   `firmware/` or hardware facts)
+3. `docs/PROJECT_STATE.md`
+4. `docs/AI_CONTINUITY_SYSTEM.md`
+5. `docs/AI_AGENT_GUIDE.md`
+6. `docs/PROMPT_TEST_LIBRARY.md`
+7. `data/progress-baseline.json`
+8. `data/agent-coordination.json`
+9. `data/prompt-test-library.json`
+10. `web-build/index.html`
 
 ## Core Rule
 
@@ -33,6 +35,10 @@ coordinate, display, record, replay, and verify.
 - GitHub repository: `https://github.com/phyo-wai-soe-jp/AgriControl.git`
 - Hosted server path: `/var/www/html/agricontrol/taskmanagement/`
 - Static site source: `web-build/`
+- Confirmed board manual: `ESP32-C3M-TRY-R1-20230701.pdf` (ESP32-C3M-TRY /
+  ESP32-C3-MINI-1, board identity, pin map, peripheral wiring)
+- Host-runnable pure logic and tests: `logic/`, `tests/`
+- Physical board firmware (unverified on hardware): `firmware/`
 - Machine-readable baseline: `data/progress-baseline.json`
 - Prompt and test library: `docs/PROMPT_TEST_LIBRARY.md`
 - User guide: `docs/USER_GUIDE.md`

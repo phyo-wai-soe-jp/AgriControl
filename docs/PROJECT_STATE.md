@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (Stage 2 pure logic)
+Last updated: 2026-08-04 JST (Stage 1 hardware facts + Stage 3 firmware drafts)
 
 ## Live Links
 
@@ -8,6 +8,8 @@ Last updated: 2026-08-04 JST (Stage 2 pure logic)
 - GitHub repository: https://github.com/phyo-wai-soe-jp/AgriControl.git
 - Blueprint PDF: `ESP32_Virtual_Control_Lab_Blueprint.pdf`
 - Public blueprint PDF: https://phyowaisoe.com/agricontrol/taskmanagement/ESP32_Virtual_Control_Lab_Blueprint.pdf
+- Board manual PDF: `ESP32-C3M-TRY-R1-20230701.pdf`
+- Public board manual PDF: https://phyowaisoe.com/agricontrol/taskmanagement/ESP32-C3M-TRY-R1-20230701.pdf
 
 ## Current Source State
 
@@ -40,22 +42,95 @@ Important files:
 - `logic/` - host-runnable pure logic: canonical sensor state, system/actuator
   state, decision engine, safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
+- `firmware/` - MicroPython source for the physical ESP32-C3M-TRY board:
+  `boot.py` and Stage 3 output test scripts, unverified on hardware.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 19%
-- Roadmap execution: 15%
-- Branch readiness: 30%
+- Overall progress: 26%
+- Roadmap execution: 21%
+- Branch readiness: 37%
 - Completion gates: 0%
-- Central control-loop coverage: 30%
+- Central control-loop coverage: 45%
 
 These numbers come from the blueprint-derived model in
 `data/progress-baseline.json`. Browser-local edits on the public dashboard do
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (Stage 1 hardware facts + Stage 3 firmware drafts)
+
+Agent: agent-02-hardware (Claude Sonnet 5).
+
+Changed:
+
+- Confirmed the exact ESP32-C3 board (roadmap task 1): **ESP32-C3M-TRY** by
+  MicroFan, using the **ESP32-C3-MINI-1** module (RISC-V core, 4MB flash).
+- Recorded the complete pin map (roadmap task 3) in `firmware/README.md`,
+  sourced from the manual's Table 5.2: LED1=D0, SW1/2/3=D2/D3/D6 (active-low),
+  SW4=D9 (shared with I2C SCL, BOOT-mode select only), SW5=RST, NeoPixel
+  x3=D10, I2C SCL=D9/SDA=D8 (OLED, AHT21, KXTJ3-1057), buzzer=D21 (PWM),
+  light sensor=D1 (ADC), CN2 (PIR)=D20, CN3 (RC servo)=D7, CN5 (HC-SR04)
+  TRIG=D4/ECHO=D5.
+- Verified OLED, NeoPixel, and buzzer wiring (roadmap task 4) against the
+  manual's working MicroPython code examples (I2C at scl=9/sda=8 for a
+  128x64 SSD1306; NeoPixel on pin 10; buzzer via `machine.PWM` on pin 21).
+- Added `firmware/boot.py` and Stage 3 test scripts
+  (`test_oled.py`, `test_neopixel.py`, `test_buzzer.py`, `test_servo.py`)
+  for roadmap tasks 17-20, matching the confirmed pin map. `test_servo.py`
+  drives the CN3 RC servo header (pin D7) to the exact window angles used by
+  `logic/decision.py` (10/90/170 degrees).
+- Corrected branch 10 (Actuator abstraction) status to `implemented`: this
+  was already true from the prior session's `logic/actuator_state.py` but
+  had not been reflected in `data/progress-baseline.json`.
+- Advanced branch 11 (Physical outputs) to `drafted`: test source exists but
+  is unverified on physical hardware.
+
+Source of hardware facts:
+
+- `ESP32-C3M-TRY-R1-20230701.pdf` ("ESP32-C3M-TRY 取扱説明書"), MicroFan,
+  2023-07-01, provided directly by the project owner.
+
+Evidence:
+
+- Manual sections 1.1, 2.1-2.8, and 5.1-5.3 (board overview, peripheral
+  descriptions, schematic, and pin table) cited directly for the board
+  identity and pin map above.
+- `firmware/*.py` syntax-checked with `python3 -m py_compile` (MicroPython
+  modules such as `machine`, `neopixel`, and `ssd1306` cannot be imported or
+  executed outside the physical device, so this confirms syntax only, not
+  on-hardware behavior).
+
+Status updates:
+
+- Roadmap tasks 1, 3, 4 marked `done`.
+- Roadmap task 2 marked `active`: the manual's example firmware version
+  (`v1.20.0`, dated 2023-07) is not proof of what is actually flashed on the
+  physical unit today; needs an on-device check.
+- Roadmap tasks 17-20 marked `active`: source drafted, awaiting on-hardware
+  verification and evidence.
+- Branch 10 corrected to `implemented`; branch 11 advanced to `drafted`.
+
+Blockers (owner input needed, tracked in `data/agent-coordination.json` under
+`agent-02-hardware`):
+
+1. Confirm the MicroPython version actually running on the board:
+   `import sys; print(sys.implementation)` in the Thonny REPL.
+2. Which RC servo model is attached to CN3 (pin D7), and is it powered
+   separately from the USB 5V rail? (Roadmap task 23 - servo power must not
+   reset the ESP - cannot be assessed from the manual, which only documents
+   the bare 3-pin header.)
+3. Which spare GPIO/relay will drive the greenhouse pump and fan? This eval
+   board has no built-in pump or fan output, so this is new wiring, not
+   something the manual answers.
+
+Next task: run `firmware/test_oled.py`, `test_neopixel.py`, `test_buzzer.py`,
+and `test_servo.py` on the physical board via Thonny, capture the observed
+output as evidence, and answer the three blockers above before advancing
+Stage 3 further (tasks 21-23).
 
 Date: 2026-08-04 JST (Stage 2 pure logic)
 
@@ -194,11 +269,18 @@ Status updates (older sessions, superseded above where noted):
 
 These must not be guessed:
 
-- Exact ESP32-C3 board.
-- MicroPython version.
-- Complete pin map.
-- OLED, NeoPixel, buzzer, and servo wiring verification.
-- Real hardware power behavior, especially servo power stability.
+- MicroPython version actually flashed on the physical unit (the owner's
+  manual only documents the version available when it was written, 2023-07).
+- Exact RC servo model and power source used at CN3.
+- Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY
+  eval board; this is new wiring specific to the AgriControl greenhouse
+  build, not something the board's manual answers).
+- Real hardware power behavior, especially servo power stability
+  (roadmap task 23).
+
+Resolved this session, sourced from the owner-provided
+`ESP32-C3M-TRY-R1-20230701.pdf`: exact board, complete pin map, and
+OLED/NeoPixel/buzzer wiring. See Completed Work above.
 
 ## Next Work
 
@@ -206,15 +288,23 @@ Stage 2 (Pure logic, tasks 9-16) is done: `logic/` implements canonical
 sensor state, system/actuator state, the stateful decision engine, and the
 safety supervisor, verified by 35 passing host-runnable tests in `tests/`.
 
+Stage 1 hardware facts (tasks 1, 3, 4) are done, sourced from the owner's
+ESP32-C3M-TRY manual. Stage 3 (Local physical outputs) test scripts are
+drafted in `firmware/` for tasks 17-20 but unverified on hardware.
+
 Follow the blueprint order. The next open tasks are:
 
-1. Confirm the exact ESP32-C3 board. (`needs_owner`)
-2. Record the MicroPython version. (`needs_owner`)
-3. Create the complete pin map. (`needs_owner`)
-4. Verify OLED, NeoPixel, buzzer, and servo wiring. (`needs_owner`)
-5. Stage 3 (Local physical outputs, tasks 17-23) is blocked behind 1-4: it
-   requires the confirmed board, pin map, and wiring evidence before any
-   driver code can be written or tested against real hardware.
+1. Record the MicroPython version actually on the physical board. (`active`,
+   `needs_owner`: run `import sys; print(sys.implementation)` in Thonny.)
+2. Run `firmware/test_oled.py`, `test_neopixel.py`, `test_buzzer.py`, and
+   `test_servo.py` on the physical board and record the results as evidence
+   (roadmap tasks 17-20, `active`).
+3. Test all outputs together (roadmap task 21) once 17-20 have hardware
+   evidence.
+4. Connect hardcoded decisions to outputs (roadmap task 22) and confirm
+   servo power does not reset the ESP (roadmap task 23) - both need the
+   owner to first answer the RC servo model/power and pump/fan pin
+   questions in `data/agent-coordination.json` (`agent-02-hardware`).
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before

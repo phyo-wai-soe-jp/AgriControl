@@ -14,9 +14,15 @@ The project is guided by `ESP32_Virtual_Control_Lab_Blueprint.pdf`. The core
 design rule is that no interface, sensor, actuator, or communication method may
 bypass the central control loop.
 
+The physical board is confirmed by `ESP32-C3M-TRY-R1-20230701.pdf`, the
+owner's manual for the ESP32-C3M-TRY (MicroFan) eval board used to build the
+control lab.
+
 ## Repository Map
 
 - `ESP32_Virtual_Control_Lab_Blueprint.pdf` - complete system blueprint.
+- `ESP32-C3M-TRY-R1-20230701.pdf` - owner's manual for the confirmed physical
+  board (board identity, pin map, peripheral wiring).
 - `web-build/` - static website deployed to the public dashboard URL.
 - `docs/AI_CONTINUITY_SYSTEM.md` - operating system for future AI agents.
 - `docs/PROJECT_STATE.md` - current project status, evidence, and next work.
@@ -36,6 +42,9 @@ bypass the central control loop.
   actuator state, the stateful decision engine, and the safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`
   (`python3 -m unittest discover -s tests`).
+- `firmware/` - MicroPython source for the confirmed ESP32-C3M-TRY board:
+  `boot.py` and Stage 3 output test scripts (OLED, NeoPixel, buzzer, servo),
+  unverified on physical hardware.
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model
