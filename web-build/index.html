@@ -657,7 +657,7 @@
 
     .continuity-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
     }
 
@@ -758,7 +758,8 @@
       }
 
       .stage-grid,
-      .loop-grid {
+      .loop-grid,
+      .continuity-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -880,6 +881,10 @@
         <a class="btn" href="./docs/AI_CONTINUITY_SYSTEM.md" target="_blank" rel="noreferrer">
           <span class="icon" aria-hidden="true">AI</span>
           Handoff
+        </a>
+        <a class="btn" href="./docs/PROMPT_TEST_LIBRARY.md" target="_blank" rel="noreferrer">
+          <span class="icon" aria-hidden="true">PT</span>
+          Prompts
         </a>
         <button class="btn" id="printBtn" type="button" title="Print or save the current report">
           <span class="icon" aria-hidden="true">PR</span>
@@ -1018,6 +1023,16 @@
                 <div class="resource-row">
                   <span>JSON data</span>
                   <a href="./data/progress-baseline.json" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
+              <article class="continuity-card">
+                <div>
+                  <h3>Prompt And Test Library</h3>
+                  <p>Provides structured prompts for every stage, branch, task, gate, and recurring verification workflow.</p>
+                </div>
+                <div class="resource-row">
+                  <span>82 task prompts</span>
+                  <a href="./docs/PROMPT_TEST_LIBRARY.md" target="_blank" rel="noreferrer">Open</a>
                 </div>
               </article>
             </div>

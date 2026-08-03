@@ -20,11 +20,16 @@ Important files:
 - `README.md`
 - `docs/AI_CONTINUITY_SYSTEM.md`
 - `docs/PROJECT_STATE.md`
+- `docs/PROMPT_TEST_LIBRARY.md`
 - `data/progress-baseline.json`
+- `data/prompt-test-library.json`
 - `web-build/index.html`
 - `web-build/docs/AI_CONTINUITY_SYSTEM.md`
 - `web-build/docs/PROJECT_STATE.md`
+- `web-build/docs/PROMPT_TEST_LIBRARY.md`
 - `web-build/data/progress-baseline.json`
+- `web-build/data/prompt-test-library.json`
+- `tools/generate-prompt-test-library.mjs`
 
 ## Current Progress Snapshot
 
@@ -51,6 +56,8 @@ Changed:
 - Hosted the blueprint PDF beside the dashboard.
 - Pushed the initial source to GitHub on branch `main`.
 - Added this AI continuity system so future models can resume systematically.
+- Added the prompt and test library so future models have task-level,
+  stage-level, branch-level, gate-level, and workflow-level prompts.
 
 Blueprint area:
 
@@ -59,6 +66,8 @@ Blueprint area:
 - Branch readiness reporting.
 - Completion gate reporting.
 - Central control-loop reporting.
+- Prompt and test library for all blueprint stages, branches, tasks, gates, and
+  reusable verification workflows.
 
 Evidence:
 
@@ -66,6 +75,10 @@ Evidence:
 - Public blueprint PDF returned HTTP 200 after deployment.
 - Dashboard inline JavaScript parsed successfully.
 - GitHub `main` was updated with the initial dashboard source.
+- Prompt library generated 82 task prompts, 12 stage packs, 16 branch packs, 5
+  gate prompts, and 7 reusable test workflows.
+- Public prompt library Markdown returned HTTP 200 after deployment.
+- Public prompt library JSON returned HTTP 200 after deployment.
 
 Status updates:
 
@@ -96,6 +109,10 @@ Follow the blueprint order. The next open tasks are:
 5. Finish canonical sensor, system state, decision engine, and safety
    supervisor structures.
 
+Before starting a task, use the matching prompt in
+`docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
+marking progress complete.
+
 ## Deployment Notes
 
 Production server path:
@@ -116,5 +133,6 @@ Verification commands:
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/ESP32_Virtual_Control_Lab_Blueprint.pdf
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/data/progress-baseline.json
+curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/docs/PROMPT_TEST_LIBRARY.md
+curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/data/prompt-test-library.json
 ```
-

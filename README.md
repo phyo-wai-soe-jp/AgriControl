@@ -20,7 +20,12 @@ bypass the central control loop.
 - `web-build/` - static website deployed to the public dashboard URL.
 - `docs/AI_CONTINUITY_SYSTEM.md` - operating system for future AI agents.
 - `docs/PROJECT_STATE.md` - current project status, evidence, and next work.
+- `docs/PROMPT_TEST_LIBRARY.md` - structured implementation and verification
+  prompts for the whole roadmap.
 - `data/progress-baseline.json` - machine-readable blueprint progress model.
+- `data/prompt-test-library.json` - machine-readable prompt and test catalog.
+- `tools/generate-prompt-test-library.mjs` - rebuilds the Markdown and JSON
+  prompt library from the baseline model.
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model
@@ -40,6 +45,7 @@ updates should be written back to `data/progress-baseline.json` and
 ## Continue The Project
 
 Start with `AGENTS.md`, then read `docs/PROJECT_STATE.md` and
-`docs/AI_CONTINUITY_SYSTEM.md`. Work through the blueprint roadmap in order,
-starting with the first open task that unlocks the next vertical slice.
-
+`docs/AI_CONTINUITY_SYSTEM.md`, then use `docs/PROMPT_TEST_LIBRARY.md` to pick
+the exact implementation and test prompts for the next open task. Work through
+the blueprint roadmap in order, starting with the first open task that unlocks
+the next vertical slice.
