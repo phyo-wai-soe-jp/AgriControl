@@ -20,15 +20,21 @@ Important files:
 - `README.md`
 - `docs/AI_CONTINUITY_SYSTEM.md`
 - `docs/PROJECT_STATE.md`
+- `docs/USER_GUIDE.md`
+- `docs/AI_AGENT_GUIDE.md`
 - `docs/PROMPT_TEST_LIBRARY.md`
 - `data/progress-baseline.json`
+- `data/agent-coordination.json`
 - `data/prompt-test-library.json`
 - `web-build/index.html`
 - `web-build/docs/AI_CONTINUITY_SYSTEM.md`
 - `web-build/docs/PROJECT_STATE.md`
+- `web-build/docs/USER_GUIDE.md`
+- `web-build/docs/AI_AGENT_GUIDE.md`
 - `web-build/docs/PROMPT_TEST_LIBRARY.md`
 - `web-build/docs/README.md`
 - `web-build/data/progress-baseline.json`
+- `web-build/data/agent-coordination.json`
 - `web-build/data/prompt-test-library.json`
 - `tools/generate-prompt-test-library.mjs`
 
@@ -62,6 +68,9 @@ Changed:
 - Added a dashboard communication report feature that can explain what is not
   done, where owner help is needed, what is unknown, and what is blocked in
   multiple-choice, long-text, or structured handoff formats.
+- Added a multi-agent coordination layer showing which AI model is doing what,
+  what each role has done, what comes next, and where owner help is needed.
+- Added owner and AI-agent guides for using the infrastructure.
 
 Blueprint area:
 
@@ -74,6 +83,7 @@ Blueprint area:
   reusable verification workflows.
 - Owner communication reporting for open work, help requests, unknowns, and
   blockers.
+- Multi-agent coordination and handoff reporting.
 
 Evidence:
 
@@ -86,6 +96,9 @@ Evidence:
 - Public prompt library Markdown returned HTTP 200 after deployment.
 - Public prompt library JSON returned HTTP 200 after deployment.
 - Dashboard communication report JavaScript parsed successfully.
+- Agent registry JSON was added and mirrored to the public dashboard bundle.
+- User and AI-agent guides were added and mirrored to the public dashboard
+  bundle.
 
 Status updates:
 
@@ -123,6 +136,9 @@ marking progress complete.
 Use the dashboard's Communication Report section to ask the owner for hardware
 facts or decisions in multiple-choice, long-text, or structured handoff form.
 
+Use the dashboard's AI Agent Board to record which model is assigned to each
+role, what it is doing, what it has done, and whether it needs owner input.
+
 ## Deployment Notes
 
 Production server path:
@@ -143,6 +159,9 @@ Verification commands:
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/ESP32_Virtual_Control_Lab_Blueprint.pdf
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/data/progress-baseline.json
+curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/data/agent-coordination.json
+curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/docs/USER_GUIDE.md
+curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/docs/AI_AGENT_GUIDE.md
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/docs/PROMPT_TEST_LIBRARY.md
 curl -I -L --max-time 20 https://phyowaisoe.com/agricontrol/taskmanagement/data/prompt-test-library.json
 ```

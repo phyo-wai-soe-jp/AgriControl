@@ -657,31 +657,136 @@
 
     .continuity-grid {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
     }
 
-    .continuity-card {
+    .continuity-card,
+    .agent-card,
+    .agent-summary-item {
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--panel);
       padding: 14px;
+    }
+
+    .continuity-card {
       min-height: 156px;
       display: grid;
       align-content: space-between;
       gap: 12px;
     }
 
-    .continuity-card h3 {
+    .continuity-card h3,
+    .agent-card h3 {
       margin: 0;
       font-size: 0.98rem;
       letter-spacing: 0;
     }
 
-    .continuity-card p {
+    .continuity-card p,
+    .agent-card p {
       margin: 4px 0 0;
       color: var(--muted);
       font-size: 0.9rem;
+    }
+
+    .agent-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .agent-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .agent-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .agent-summary-item {
+      min-height: 86px;
+    }
+
+    .agent-summary-item strong {
+      display: block;
+      font-size: 1.7rem;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .agent-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .agent-card {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .agent-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .agent-input,
+    .agent-select,
+    .agent-text {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 8px 9px;
+    }
+
+    .agent-text {
+      min-height: 74px;
+      resize: vertical;
+    }
+
+    .agent-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #33474d;
+      font-size: 0.9rem;
+    }
+
+    .agent-check input {
+      width: 18px;
+      height: 18px;
     }
 
     .communication-grid {
@@ -885,13 +990,15 @@
       }
 
       .kpi-grid,
-      .branch-grid {
+      .branch-grid,
+      .agent-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .stage-grid,
       .loop-grid,
-      .continuity-grid {
+      .continuity-grid,
+      .agent-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -910,6 +1017,7 @@
       .section-head,
       .split,
       .communication-grid,
+      .agent-fields,
       .next-item {
         grid-template-columns: 1fr;
         display: grid;
@@ -929,6 +1037,8 @@
       .branch-grid,
       .loop-grid,
       .continuity-grid,
+      .agent-summary,
+      .agent-grid,
       .gate-grid {
         grid-template-columns: 1fr;
       }
@@ -1023,6 +1133,10 @@
           <span class="icon" aria-hidden="true">PT</span>
           Prompts
         </a>
+        <a class="btn" href="./docs/USER_GUIDE.md" target="_blank" rel="noreferrer">
+          <span class="icon" aria-hidden="true">UG</span>
+          Guide
+        </a>
         <button class="btn" id="printBtn" type="button" title="Print or save the current report">
           <span class="icon" aria-hidden="true">PR</span>
           Print
@@ -1054,6 +1168,7 @@
           <a href="#loop">Control Loop <span class="mini">12</span></a>
           <a href="#gates">Gates <span class="mini">A-E</span></a>
           <a href="#continuity">AI System <span class="mini">Ready</span></a>
+          <a href="#agents">AI Agents <span class="mini" id="navAgents">8</span></a>
           <a href="#communication">Ask Me <span class="mini">Report</span></a>
           <a href="#report">Report <span class="mini">Live</span></a>
         </nav>
@@ -1173,7 +1288,54 @@
                   <a href="./docs/PROMPT_TEST_LIBRARY.md" target="_blank" rel="noreferrer">Open</a>
                 </div>
               </article>
+              <article class="continuity-card">
+                <div>
+                  <h3>User Guide</h3>
+                  <p>Explains how to read progress, answer questions, use the agent board, and keep durable state.</p>
+                </div>
+                <div class="resource-row">
+                  <span>Owner guide</span>
+                  <a href="./docs/USER_GUIDE.md" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
+              <article class="continuity-card">
+                <div>
+                  <h3>AI Agent Guide</h3>
+                  <p>Gives future models the read order, claim protocol, status rules, and handoff format.</p>
+                </div>
+                <div class="resource-row">
+                  <span>Model guide</span>
+                  <a href="./docs/AI_AGENT_GUIDE.md" target="_blank" rel="noreferrer">Open</a>
+                </div>
+              </article>
             </div>
+          </div>
+        </section>
+
+        <section class="section" id="agents">
+          <div class="section-head">
+            <div>
+              <h2>AI Agent Board</h2>
+              <p>Track which model is responsible for each role, what it is doing now, what it has done, and whether it needs your help.</p>
+            </div>
+            <span class="badge active" id="agentStatusBadge">8 roles</span>
+          </div>
+          <div class="section-body">
+            <div class="agent-toolbar">
+              <div class="agent-links">
+                <a class="btn" href="./data/agent-coordination.json" target="_blank" rel="noreferrer">Registry JSON</a>
+                <a class="btn" href="./docs/USER_GUIDE.md" target="_blank" rel="noreferrer">User Guide</a>
+                <a class="btn" href="./docs/AI_AGENT_GUIDE.md" target="_blank" rel="noreferrer">AI Guide</a>
+              </div>
+              <button class="btn primary" id="copyAgentReportBtn" type="button" title="Copy the current agent handoff report">
+                <span class="icon" aria-hidden="true">CP</span>
+                Copy Agent Report
+              </button>
+            </div>
+            <div class="agent-summary" id="agentSummary"></div>
+            <div class="agent-grid" id="agentGrid"></div>
+            <div class="nav-title">Agent Handoff</div>
+            <div class="report" id="agentHandoffReport"></div>
           </div>
         </section>
 
@@ -1372,6 +1534,16 @@
       drafted: "Drafted",
       implemented: "Implemented",
       verified: "Verified"
+    };
+
+    const AGENT_STATUS_LABELS = {
+      ready: "Ready",
+      active: "Active",
+      needs_owner: "Needs Owner",
+      blocked: "Blocked",
+      review: "Review",
+      done: "Done",
+      waiting: "Waiting"
     };
 
     const stages = [
@@ -1617,6 +1789,97 @@
       ownerReply: ""
     };
 
+    const defaultAgents = [
+      {
+        id: "agent-01-coordinator",
+        role: "Project coordinator",
+        model: "Codex GPT-5",
+        status: "done",
+        current_work: "Maintain the coordination infrastructure, dashboard, public docs, source repository, and deployment flow.",
+        done_work: "Created public dashboard; added AI continuity; added prompt and test library; added communication reports; added multi-agent coordination.",
+        next_work: "Keep handoff docs, dashboard, server, and GitHub synchronized after each meaningful project update.",
+        needs_owner: false,
+        scope: "Project reporting, continuity, coordination"
+      },
+      {
+        id: "agent-02-hardware",
+        role: "Hardware facts agent",
+        model: "Unassigned",
+        status: "needs_owner",
+        current_work: "Collect exact ESP32-C3 board, MicroPython version, pin map, wiring evidence, and servo power stability.",
+        done_work: "",
+        next_work: "Ask the owner for board model, firmware version, pin map, and hardware verification notes.",
+        needs_owner: true,
+        scope: "Stage 1, Stage 3, Gate A"
+      },
+      {
+        id: "agent-03-logic",
+        role: "Pure logic agent",
+        model: "Unassigned",
+        status: "ready",
+        current_work: "Implement canonical sensor structures, system state, actuator state, decision engine, and safety supervisor on the computer.",
+        done_work: "",
+        next_work: "Use Stage 2 prompts and build host-runnable tests for normal, boundary, conflict, and sequence behavior.",
+        needs_owner: false,
+        scope: "Stage 2, Branches 6-9, Branch 13"
+      },
+      {
+        id: "agent-04-firmware-runtime",
+        role: "ESP runtime agent",
+        model: "Unassigned",
+        status: "waiting",
+        current_work: "Prepare non-blocking ESP runtime, shared state, events, stale-data detection, recovery, HTTP, and validation limits.",
+        done_work: "",
+        next_work: "Wait for hardware facts and pure logic contracts, then implement Stage 4 and Stage 5 firmware slices.",
+        needs_owner: true,
+        scope: "Stage 4, Stage 5, Branches 5, 7, 12, 13"
+      },
+      {
+        id: "agent-05-backend",
+        role: "FastAPI bridge agent",
+        model: "Unassigned",
+        status: "waiting",
+        current_work: "Create the local FastAPI bridge for sessions, sequence forwarding, status, events, scenarios, logs, and replay.",
+        done_work: "",
+        next_work: "Wait for the first ESP temperature slice contract, then implement Stage 6 bridge endpoints.",
+        needs_owner: false,
+        scope: "Stage 6, Stage 8, Stage 10, Branches 3, 4, 12, 14"
+      },
+      {
+        id: "agent-06-frontend-sim",
+        role: "Website simulation agent",
+        model: "Unassigned",
+        status: "waiting",
+        current_work: "Build virtual controls, scenario UI, actuator display, feedback injection, event timeline, and dashboard views.",
+        done_work: "",
+        next_work: "Wait for FastAPI and protocol contracts, then implement Stage 6, Stage 7, Stage 8, and Stage 9 UI slices.",
+        needs_owner: false,
+        scope: "Stages 6-9, Branch 2"
+      },
+      {
+        id: "agent-07-verification",
+        role: "Verification agent",
+        model: "Unassigned",
+        status: "ready",
+        current_work: "Use the prompt and test library to verify unit, boundary, sequence, integration, failure, endurance, and replay behavior.",
+        done_work: "",
+        next_work: "Review any implementation change before progress is advanced.",
+        needs_owner: false,
+        scope: "All gates, Branch 13"
+      },
+      {
+        id: "agent-08-docs-release",
+        role: "Docs and release agent",
+        model: "Codex GPT-5",
+        status: "done",
+        current_work: "Maintain owner guide, AI guide, public docs, deployment notes, and GitHub handoff evidence.",
+        done_work: "Created project README and public docs; mirrored public documentation; documented deployment and verification flow.",
+        next_work: "Update docs after each project change and keep public URLs verified.",
+        needs_owner: false,
+        scope: "Documentation, release, public reporting"
+      }
+    ];
+
     const baseline = {
       tasks: {
         "5": "done",
@@ -1640,7 +1903,8 @@
       },
       gates: {},
       notes: "Initial public progress page created from the ESP32 Virtual Control Lab blueprint.",
-      communication: clone(defaultCommunication)
+      communication: clone(defaultCommunication),
+      agents: clone(defaultAgents)
     };
 
     for (const gate of gates) {
@@ -1677,6 +1941,11 @@
       taskRows: document.getElementById("taskRows"),
       taskSearch: document.getElementById("taskSearch"),
       nextList: document.getElementById("nextList"),
+      agentSummary: document.getElementById("agentSummary"),
+      agentGrid: document.getElementById("agentGrid"),
+      agentHandoffReport: document.getElementById("agentHandoffReport"),
+      agentStatusBadge: document.getElementById("agentStatusBadge"),
+      navAgents: document.getElementById("navAgents"),
       notes: document.getElementById("notes"),
       summaryReport: document.getElementById("summaryReport"),
       communicationReport: document.getElementById("communicationReport"),
@@ -1688,6 +1957,14 @@
 
     function clone(value) {
       return JSON.parse(JSON.stringify(value));
+    }
+
+    function mergeAgentState(savedAgents) {
+      const savedById = new Map((Array.isArray(savedAgents) ? savedAgents : []).map((agent) => [agent.id, agent]));
+      return defaultAgents.map((agent) => ({
+        ...clone(agent),
+        ...(savedById.get(agent.id) || {})
+      }));
     }
 
     function loadState() {
@@ -1709,7 +1986,8 @@
               answers: {
                 ...((stored.communication && stored.communication.answers) || {})
               }
-            }
+            },
+            agents: mergeAgentState(stored.agents)
           };
         }
       } catch (error) {
@@ -1746,6 +2024,22 @@
       return tasks.filter((task) => statusForTask(task.id) === "blocked");
     }
 
+    function agentsNeedingOwner() {
+      return state.agents.filter((agent) => agent.needs_owner || agent.status === "needs_owner");
+    }
+
+    function activeAgents() {
+      return state.agents.filter((agent) => agent.status === "active");
+    }
+
+    function doneAgents() {
+      return state.agents.filter((agent) => agent.status === "done");
+    }
+
+    function agentById(id) {
+      return state.agents.find((agent) => agent.id === id);
+    }
+
     function activeUnknowns() {
       return knownUnknowns.filter((unknown) => {
         if (unknown.id === "board") return statusForTask(1) !== "done";
@@ -1775,11 +2069,26 @@
         prompt: `Can you unblock Step ${task.id}?`,
         choices: ["I can unblock it now", "Tell me what evidence is needed", "Keep it blocked"]
       }));
-      return [...hardwareItems, ...blockerItems];
+      const agentItems = agentsNeedingOwner().map((agent) => ({
+        id: `agent-${agent.id}`,
+        title: agent.role,
+        why: `${agent.role} is marked as needing owner input. Current work: ${agent.current_work}`,
+        prompt: `Can you help ${agent.role}?`,
+        choices: ["I can answer now", "Ask me a precise question", "Keep waiting for now"]
+      }));
+      return [...hardwareItems, ...blockerItems, ...agentItems];
     }
 
     function currentCommunicationText() {
       return elements.communicationReport.textContent.trim();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
     }
 
     function percent(value) {
@@ -1859,9 +2168,9 @@
 
     function badgeClassForStatus(status) {
       if (status === "done" || status === "verified") return "done";
-      if (status === "active" || status === "implemented") return "active";
+      if (status === "active" || status === "implemented" || status === "review") return "active";
       if (status === "blocked") return "blocked";
-      if (status === "drafted") return "warning";
+      if (status === "drafted" || status === "needs_owner" || status === "waiting") return "warning";
       return "todo";
     }
 
@@ -2075,6 +2384,105 @@
       });
     }
 
+    function renderAgentSummary() {
+      const active = activeAgents().length;
+      const owner = agentsNeedingOwner().length;
+      const blocked = state.agents.filter((agent) => agent.status === "blocked").length;
+      const done = doneAgents().length;
+      elements.navAgents.textContent = String(state.agents.length);
+      elements.agentStatusBadge.textContent = `${active} active, ${owner} need owner`;
+      elements.agentStatusBadge.className = `badge ${owner ? "warning" : active ? "active" : "done"}`;
+      elements.agentSummary.innerHTML = `
+        <div class="agent-summary-item">
+          <strong>${active}</strong>
+          <span class="kpi-detail">active models</span>
+        </div>
+        <div class="agent-summary-item">
+          <strong>${owner}</strong>
+          <span class="kpi-detail">need your help</span>
+        </div>
+        <div class="agent-summary-item">
+          <strong>${blocked}</strong>
+          <span class="kpi-detail">blocked roles</span>
+        </div>
+        <div class="agent-summary-item">
+          <strong>${done}</strong>
+          <span class="kpi-detail">done roles</span>
+        </div>
+      `;
+    }
+
+    function renderAgentCards() {
+      elements.agentGrid.innerHTML = "";
+      state.agents.forEach((agent) => {
+        const card = document.createElement("article");
+        card.className = "agent-card";
+        card.innerHTML = `
+          <div class="stage-top">
+            <div>
+              <h3>${escapeHtml(agent.role)}</h3>
+              <p>${escapeHtml(agent.scope)}</p>
+            </div>
+            <span class="badge ${badgeClassForStatus(agent.status)}">${escapeHtml(AGENT_STATUS_LABELS[agent.status] || agent.status)}</span>
+          </div>
+          <div class="agent-fields">
+            <div class="field">
+              <label for="${agent.id}-model">Model</label>
+              <input class="agent-input" id="${agent.id}-model" data-agent-id="${agent.id}" data-agent-field="model" value="${escapeHtml(agent.model)}">
+            </div>
+            <div class="field">
+              <label for="${agent.id}-status">Status</label>
+              <select class="agent-select" id="${agent.id}-status" data-agent-id="${agent.id}" data-agent-field="status">
+                ${Object.entries(AGENT_STATUS_LABELS).map(([value, label]) => `<option value="${value}" ${agent.status === value ? "selected" : ""}>${label}</option>`).join("")}
+              </select>
+            </div>
+            <div class="field full">
+              <label for="${agent.id}-current">Doing Now</label>
+              <textarea class="agent-text" id="${agent.id}-current" data-agent-id="${agent.id}" data-agent-field="current_work">${escapeHtml(agent.current_work)}</textarea>
+            </div>
+            <div class="field full">
+              <label for="${agent.id}-done">Done Work</label>
+              <textarea class="agent-text" id="${agent.id}-done" data-agent-id="${agent.id}" data-agent-field="done_work">${escapeHtml(agent.done_work)}</textarea>
+            </div>
+            <div class="field full">
+              <label for="${agent.id}-next">Next Work</label>
+              <textarea class="agent-text" id="${agent.id}-next" data-agent-id="${agent.id}" data-agent-field="next_work">${escapeHtml(agent.next_work)}</textarea>
+            </div>
+            <label class="agent-check field full">
+              <input type="checkbox" data-agent-id="${agent.id}" data-agent-field="needs_owner" ${agent.needs_owner ? "checked" : ""}>
+              Needs owner input
+            </label>
+          </div>
+        `;
+        elements.agentGrid.appendChild(card);
+      });
+    }
+
+    function renderAgentHandoffReport() {
+      const owner = agentsNeedingOwner();
+      const active = activeAgents();
+      const lines = [
+        "AgriControl AI agent coordination",
+        `Active agents: ${active.length ? active.map((agent) => `${agent.model} (${agent.role})`).join("; ") : "none"}`,
+        `Needs owner: ${owner.length ? owner.map((agent) => `${agent.role} - ${agent.current_work}`).join("; ") : "none"}`,
+        "",
+        "Agent status:"
+      ];
+      state.agents.forEach((agent) => {
+        lines.push(`- ${agent.role} | model: ${agent.model} | status: ${AGENT_STATUS_LABELS[agent.status] || agent.status}`);
+        lines.push(`  Doing: ${agent.current_work || "None"}`);
+        lines.push(`  Done: ${agent.done_work || "None"}`);
+        lines.push(`  Next: ${agent.next_work || "None"}`);
+      });
+      elements.agentHandoffReport.textContent = lines.join("\n");
+    }
+
+    function renderAgentBoard() {
+      renderAgentSummary();
+      renderAgentCards();
+      renderAgentHandoffReport();
+    }
+
     function buildCommunicationLines(mode) {
       const task = calcTaskProgress();
       const branch = calcBranchProgress();
@@ -2249,6 +2657,7 @@
       renderLoop();
       renderGates();
       renderNextWork();
+      renderAgentBoard();
       renderCommunicationReport();
       renderReport();
     }
@@ -2281,8 +2690,28 @@
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     }
 
+    function updateAgentFromTarget(target) {
+      const agent = agentById(target.dataset.agentId);
+      if (!agent) return;
+      const field = target.dataset.agentField;
+      if (field === "needs_owner") {
+        agent.needs_owner = target.checked;
+      } else {
+        agent[field] = target.value;
+      }
+    }
+
     document.addEventListener("change", (event) => {
       const target = event.target;
+      if (
+        (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) &&
+        target.dataset.agentField
+      ) {
+        updateAgentFromTarget(target);
+        saveState();
+        renderAll();
+        return;
+      }
       if (!(target instanceof HTMLSelectElement)) return;
       const { type, id } = target.dataset;
       if (type === "owner-answer") {
@@ -2296,6 +2725,17 @@
       if (type === "gate") state.gates[String(id)] = target.value;
       saveState();
       renderAll();
+    });
+
+    document.addEventListener("input", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) return;
+      if (!target.dataset.agentField) return;
+      updateAgentFromTarget(target);
+      saveState();
+      renderAgentSummary();
+      renderAgentHandoffReport();
+      renderCommunicationReport();
     });
 
     document.querySelectorAll(".tab").forEach((tab) => {
@@ -2360,6 +2800,19 @@
       link.click();
       link.remove();
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    });
+
+    document.getElementById("copyAgentReportBtn").addEventListener("click", async () => {
+      const text = elements.agentHandoffReport.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(text);
+        elements.copyStatus.textContent = "Agent report copied.";
+      } catch (error) {
+        elements.copyStatus.textContent = "Copy unavailable. Select and copy the agent handoff text.";
+      }
+      setTimeout(() => {
+        elements.copyStatus.textContent = "";
+      }, 2400);
     });
 
     document.getElementById("exportBtn").addEventListener("click", exportProgress);

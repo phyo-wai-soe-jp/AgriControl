@@ -1,0 +1,143 @@
+{
+  "schema_version": "1.0",
+  "project": "AgriControl",
+  "updated_at": "2026-08-04T00:00:00+09:00",
+  "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
+  "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
+  "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
+  "status_vocabulary": {
+    "ready": "Agent or role can start when assigned.",
+    "active": "Agent is currently working on the named scope.",
+    "needs_owner": "Agent needs user input before meaningful progress can continue.",
+    "blocked": "Agent is blocked by missing evidence, missing hardware, failing dependency, or unresolved decision.",
+    "review": "Agent output needs verification before status can advance.",
+    "done": "Agent completed the listed work and left evidence."
+  },
+  "coordination_rules": [
+    "Every agent must read AGENTS.md, docs/AI_CONTINUITY_SYSTEM.md, docs/AI_AGENT_GUIDE.md, docs/PROJECT_STATE.md, docs/PROMPT_TEST_LIBRARY.md, data/progress-baseline.json, and this file before changing project state.",
+    "Every agent must claim one narrow scope before editing.",
+    "No agent may bypass the central control loop or move decision authority away from the ESP32.",
+    "No agent may mark roadmap tasks, branches, or gates complete without evidence.",
+    "When an agent changes durable status, it must update docs/PROJECT_STATE.md, data/progress-baseline.json, and this coordination file.",
+    "When public reporting changes, mirror docs and data into web-build/docs and web-build/data, deploy web-build, and push to GitHub.",
+    "If two agents touch the same file or blueprint branch, the later agent must review the earlier agent's work before editing."
+  ],
+  "agents": [
+    {
+      "id": "agent-01-coordinator",
+      "role": "Project coordinator",
+      "model": "Codex GPT-5",
+      "status": "done",
+      "current_work": "Maintain the coordination infrastructure, dashboard, public docs, source repository, and deployment flow.",
+      "done_work": [
+        "Created the public task-management dashboard.",
+        "Added AI continuity docs.",
+        "Added prompt and test library.",
+        "Added communication reports for owner questions.",
+        "Added multi-agent coordination model and guides."
+      ],
+      "next_work": "Keep handoff docs, dashboard, server, and GitHub synchronized after each meaningful project update.",
+      "needs_owner": false,
+      "blueprint_scope": ["Project reporting", "Continuity", "Coordination"]
+    },
+    {
+      "id": "agent-02-hardware",
+      "role": "Hardware facts agent",
+      "model": "Unassigned",
+      "status": "needs_owner",
+      "current_work": "Collect exact ESP32-C3 board, MicroPython version, pin map, wiring evidence, and servo power stability.",
+      "done_work": [],
+      "next_work": "Ask the owner for board model, firmware version, pin map, and hardware verification notes.",
+      "needs_owner": true,
+      "owner_questions": [
+        "Which exact ESP32-C3 board is being used?",
+        "What MicroPython version is installed?",
+        "Which GPIO pins connect OLED, NeoPixel, buzzer, and servo?",
+        "Is the servo powered separately enough to avoid ESP reset?"
+      ],
+      "blueprint_scope": ["Stage 1", "Stage 3", "Gate A"]
+    },
+    {
+      "id": "agent-03-logic",
+      "role": "Pure logic agent",
+      "model": "Unassigned",
+      "status": "ready",
+      "current_work": "Implement canonical sensor structures, system state, actuator state, decision engine, and safety supervisor on the computer.",
+      "done_work": [],
+      "next_work": "Use Stage 2 prompts and build host-runnable tests for normal, boundary, conflict, and sequence behavior.",
+      "needs_owner": false,
+      "blueprint_scope": ["Stage 2", "Branches 6-9", "Branch 13"]
+    },
+    {
+      "id": "agent-04-firmware-runtime",
+      "role": "ESP runtime agent",
+      "model": "Unassigned",
+      "status": "waiting",
+      "current_work": "Prepare non-blocking ESP runtime, shared state, events, stale-data detection, recovery, HTTP, and validation limits.",
+      "done_work": [],
+      "next_work": "Wait for hardware facts and pure logic contracts, then implement Stage 4 and Stage 5 firmware slices.",
+      "needs_owner": true,
+      "blueprint_scope": ["Stage 4", "Stage 5", "Branches 5, 7, 12, 13"]
+    },
+    {
+      "id": "agent-05-backend",
+      "role": "FastAPI bridge agent",
+      "model": "Unassigned",
+      "status": "waiting",
+      "current_work": "Create the local FastAPI bridge for sessions, sequence forwarding, status, events, scenarios, logs, and replay.",
+      "done_work": [],
+      "next_work": "Wait for the first ESP temperature slice contract, then implement Stage 6 bridge endpoints.",
+      "needs_owner": false,
+      "blueprint_scope": ["Stage 6", "Stage 8", "Stage 10", "Branches 3, 4, 12, 14"]
+    },
+    {
+      "id": "agent-06-frontend-sim",
+      "role": "Website simulation agent",
+      "model": "Unassigned",
+      "status": "waiting",
+      "current_work": "Build virtual controls, scenario UI, actuator display, feedback injection, event timeline, and dashboard views.",
+      "done_work": [],
+      "next_work": "Wait for FastAPI and protocol contracts, then implement Stage 6, Stage 7, Stage 8, and Stage 9 UI slices.",
+      "needs_owner": false,
+      "blueprint_scope": ["Stages 6-9", "Branch 2"]
+    },
+    {
+      "id": "agent-07-verification",
+      "role": "Verification agent",
+      "model": "Unassigned",
+      "status": "ready",
+      "current_work": "Use the prompt and test library to verify unit, boundary, sequence, integration, failure, endurance, and replay behavior.",
+      "done_work": [],
+      "next_work": "Review any implementation change before progress is advanced.",
+      "needs_owner": false,
+      "blueprint_scope": ["All gates", "Branch 13"]
+    },
+    {
+      "id": "agent-08-docs-release",
+      "role": "Docs and release agent",
+      "model": "Codex GPT-5",
+      "status": "done",
+      "current_work": "Maintain owner guide, AI guide, public docs, deployment notes, and GitHub handoff evidence.",
+      "done_work": [
+        "Created project README and public docs.",
+        "Mirrored public documentation into web-build/docs.",
+        "Documented deployment and verification flow."
+      ],
+      "next_work": "Update docs after each project change and keep public URLs verified.",
+      "needs_owner": false,
+      "blueprint_scope": ["Documentation", "Release", "Public reporting"]
+    }
+  ],
+  "handoff_template": {
+    "agent_id": "",
+    "model": "",
+    "status": "",
+    "scope": "",
+    "doing_now": "",
+    "done_this_session": [],
+    "evidence": [],
+    "needs_owner": false,
+    "owner_questions": [],
+    "next_agent_recommendation": ""
+  }
+}

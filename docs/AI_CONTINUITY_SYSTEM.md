@@ -43,12 +43,14 @@ At the beginning of every continuation session:
 2. Read `AGENTS.md`.
 3. Read `docs/PROJECT_STATE.md`.
 4. Read `data/progress-baseline.json`.
-5. Read `docs/PROMPT_TEST_LIBRARY.md`.
-6. Read `data/prompt-test-library.json` when a machine-readable task prompt is
+5. Read `docs/AI_AGENT_GUIDE.md`.
+6. Read `data/agent-coordination.json`.
+7. Read `docs/PROMPT_TEST_LIBRARY.md`.
+8. Read `data/prompt-test-library.json` when a machine-readable task prompt is
    useful.
-7. Open or inspect `web-build/index.html` if reporting or dashboard behavior is
+9. Open or inspect `web-build/index.html` if reporting or dashboard behavior is
    affected.
-8. Choose the next task from the roadmap, preferring the earliest open task on
+10. Choose the next task from the roadmap, preferring the earliest open task on
    the critical path.
 
 Do not guess hardware facts. If the exact board, MicroPython version, pin map,
@@ -59,20 +61,22 @@ or wiring evidence is missing, keep the relevant task open or blocked.
 For each work session:
 
 1. Select one blueprint stage and one small objective.
-2. Select the matching prompt IDs from `docs/PROMPT_TEST_LIBRARY.md`.
-3. Name the affected branch IDs, gate IDs, and control-loop steps.
-4. Implement the smallest useful change.
-5. Add or update verification evidence using the matching test prompts.
-6. Update progress statuses only when evidence exists.
-7. Record blockers and assumptions in `docs/PROJECT_STATE.md`.
-8. Update `data/progress-baseline.json` when durable status changes.
-9. Regenerate `docs/PROMPT_TEST_LIBRARY.md` and
+2. Claim or update one agent role in `data/agent-coordination.json`.
+3. Select the matching prompt IDs from `docs/PROMPT_TEST_LIBRARY.md`.
+4. Name the affected branch IDs, gate IDs, and control-loop steps.
+5. Implement the smallest useful change.
+6. Add or update verification evidence using the matching test prompts.
+7. Update progress statuses only when evidence exists.
+8. Record blockers and assumptions in `docs/PROJECT_STATE.md`.
+9. Update `data/progress-baseline.json` and `data/agent-coordination.json` when
+   durable status changes.
+10. Regenerate `docs/PROMPT_TEST_LIBRARY.md` and
    `data/prompt-test-library.json` with
    `node tools/generate-prompt-test-library.mjs` if the roadmap, branches,
    gates, or test model changes.
-10. Copy public docs/data into `web-build/docs/` and `web-build/data/`.
-11. Deploy the static dashboard when public reporting changes.
-12. Commit and push to GitHub.
+11. Copy public docs/data into `web-build/docs/` and `web-build/data/`.
+12. Deploy the static dashboard when public reporting changes.
+13. Commit and push to GitHub.
 
 ## Indicator Model
 
@@ -149,8 +153,11 @@ When the dashboard or public handoff files change:
    - `web-build/ESP32_Virtual_Control_Lab_Blueprint.pdf`
    - `web-build/docs/AI_CONTINUITY_SYSTEM.md`
    - `web-build/docs/PROJECT_STATE.md`
+   - `web-build/docs/USER_GUIDE.md`
+   - `web-build/docs/AI_AGENT_GUIDE.md`
    - `web-build/docs/PROMPT_TEST_LIBRARY.md`
    - `web-build/data/progress-baseline.json`
+   - `web-build/data/agent-coordination.json`
    - `web-build/data/prompt-test-library.json`
 3. Deploy `web-build/` to `/var/www/html/agricontrol/taskmanagement/`.
 4. Verify the public URLs return HTTP 200.
