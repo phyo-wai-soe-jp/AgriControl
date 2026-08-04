@@ -1861,9 +1861,9 @@
         role: "ESP runtime agent",
         model: "Claude Sonnet 5",
         status: "needs_owner",
-        current_work: "Drafted the Stage 4 ESP runtime (async loop, shared state, event log, stale-data detection, recovery, HTTP server, request-size/validation limits) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access available.",
-        done_work: "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h and firmware/src/runtime.cpp (env:runtime, WebServer + POST /sensor + validation); added secrets.h.example; advanced branches 5 and 12.",
-        next_work: "Owner: add real WiFi credentials to firmware/include/secrets.h, build/upload env:runtime, test POST /sensor, and confirm the placeholder tuning constants.",
+        current_work: "Drafted the Stage 4 ESP runtime and the Stage 5 first vertical slice (temperature-only: decision engine, servo, OLED, JSON response) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access available. No safety supervisor wired in yet.",
+        done_work: "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h, decision.h and firmware/src/runtime.cpp, vertical_slice.cpp (env:runtime, env:vertical_slice); added secrets.h.example.",
+        next_work: "Owner: add real WiFi credentials to firmware/include/secrets.h, build/upload env:vertical_slice, test POST /sensor with curl, and confirm the placeholder tuning constants including the temperature range.",
         needs_owner: true,
         scope: "Stage 4, Stage 5, Branches 5, 7, 12, 13"
       },
@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-04T08:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-04T09:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1951,7 +1951,13 @@
         "27": "active",
         "28": "active",
         "29": "active",
-        "30": "active"
+        "30": "active",
+        "31": "active",
+        "33": "active",
+        "34": "active",
+        "35": "active",
+        "36": "active",
+        "37": "active"
       },
       branches: {
         "1": "verified",
@@ -1967,7 +1973,7 @@
         "13": "drafted"
       },
       gates: {},
-      notes: "System rechecked: 35/35 logic/ tests still pass, dashboard/data/docs mirrors and live deployment confirmed in sync. Branch 12 (Observability) corrected from implemented back to drafted -- the C++ event log has never been compiled, unlike the host-tested Python logic/. Firmware toolchain: PlatformIO + Arduino C++. Servo power confirmed on hardware (task 23 done). Stage 4 ESP runtime drafted in firmware/, still unverified. See docs/PROJECT_STATE.md.",
+      notes: "Fixed a dashboard bug where stale browser localStorage could silently override current data (see BASELINE_VERSION staleness check). Stage 5 first vertical slice drafted (env:vertical_slice, temperature only): decision engine, servo, OLED, JSON response -- no safety supervisor wired in yet, flagged in firmware/README.md. Firmware toolchain: PlatformIO + Arduino C++. Servo power confirmed on hardware. Nothing in firmware/ has been built (pio run) from this environment. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

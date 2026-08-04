@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-04T08:00:00+09:00",
+  "updated_at": "2026-08-04T09:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -25,7 +25,7 @@
   },
   "metrics": {
     "overall_percent": 29,
-    "roadmap_percent": 28,
+    "roadmap_percent": 31,
     "branch_percent": 39,
     "gate_percent": 0,
     "control_loop_percent": 47
@@ -75,13 +75,13 @@
     { "id": 28, "stage": 4, "status": "active", "title": "Add recovery logic." },
     { "id": 29, "stage": 4, "status": "active", "title": "Add the HTTP server." },
     { "id": 30, "stage": 4, "status": "active", "title": "Add request-size and validation limits." },
-    { "id": 31, "stage": 5, "status": "todo", "title": "Implement only virtual temperature." },
+    { "id": 31, "stage": 5, "status": "active", "title": "Implement only virtual temperature." },
     { "id": 32, "stage": 5, "status": "todo", "title": "Send temperature with curl." },
-    { "id": 33, "stage": 5, "status": "todo", "title": "Validate the message." },
-    { "id": 34, "stage": 5, "status": "todo", "title": "Calculate the window command." },
-    { "id": 35, "stage": 5, "status": "todo", "title": "Apply the servo command." },
-    { "id": 36, "stage": 5, "status": "todo", "title": "Display the reason on OLED." },
-    { "id": 37, "stage": 5, "status": "todo", "title": "Return the decision as JSON." },
+    { "id": 33, "stage": 5, "status": "active", "title": "Validate the message." },
+    { "id": 34, "stage": 5, "status": "active", "title": "Calculate the window command." },
+    { "id": 35, "stage": 5, "status": "active", "title": "Apply the servo command." },
+    { "id": 36, "stage": 5, "status": "active", "title": "Display the reason on OLED." },
+    { "id": 37, "stage": 5, "status": "active", "title": "Return the decision as JSON." },
     { "id": 38, "stage": 5, "status": "todo", "title": "Test repeated messages." },
     { "id": 39, "stage": 5, "status": "todo", "title": "Test invalid values." },
     { "id": 40, "stage": 5, "status": "todo", "title": "Test timeout and recovery." },
@@ -218,12 +218,13 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 24, 25, 26, 27, 28, 29, 30],
+  "next_tasks": [17, 18, 19, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",
     "Exact PlatformIO platform/framework/Arduino-ESP32 core versions in use",
     "Real WiFi credentials for firmware/include/secrets.h",
-    "Whether the placeholder runtime tuning constants (stale-data timeout, recovery threshold, max request body size) are acceptable for the real deployment"
+    "Whether the placeholder runtime tuning constants (stale-data timeout, recovery threshold, max request body size) are acceptable for the real deployment",
+    "Acceptable temperature validation range for firmware/src/vertical_slice.cpp (currently a placeholder -40C to 85C)"
   ]
 }

@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (fixed dashboard staleness bug)
+Last updated: 2026-08-04 JST (Stage 5 first vertical slice drafted)
 
 ## Live Links
 
@@ -43,16 +43,17 @@ Important files:
   state, decision engine, safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
 - `firmware/` - PlatformIO / Arduino C++ project for the physical
-  ESP32-C3M-TRY board: `main.cpp`, Stage 3 output test environments, and a
-  drafted Stage 4 ESP runtime (`env:runtime`), unverified by a build in
-  this environment.
+  ESP32-C3M-TRY board: `main.cpp`, Stage 3 output test environments, a
+  drafted Stage 4 ESP runtime (`env:runtime`), and a drafted Stage 5 first
+  vertical slice (`env:vertical_slice`, temperature only, no safety
+  supervisor yet), unverified by a build in this environment.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
 - Overall progress: 29%
-- Roadmap execution: 28%
+- Roadmap execution: 31%
 - Branch readiness: 39%
 - Completion gates: 0%
 - Central control-loop coverage: 47%
@@ -62,6 +63,62 @@ These numbers come from the blueprint-derived model in
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (Stage 5 first vertical slice drafted)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+Continuing in roadmap order: Stage 4 (tasks 24-30) is drafted, and Stage 5's
+first vertical slice (tasks 31/33-37) is temperature-only code that, like
+Stage 4, does not require hardware access to write -- only to verify.
+
+Changed:
+
+- Added `firmware/include/decision.h` (roadmap task 34): temperature-only
+  decision rules in C++, matching `logic/decision.py`'s thresholds exactly
+  (`<=28C` fan off/window closed, `28-35C` fan on/window half, `>35C` fan
+  on/window fully open).
+- Added `firmware/src/vertical_slice.cpp` (`env:vertical_slice`, roadmap
+  tasks 31/33/34/35/36/37): validates a temperature-only `POST /sensor`
+  message (rejects anything outside a placeholder -40C to 85C range, and
+  rejects any `values` key other than `temperature` -- soil/tank/rain are
+  Stage 7), computes the decision, writes the servo (`ESP32Servo` on CN3),
+  displays the temperature/fan/window/rule on the OLED (`U8g2`), and
+  returns a full JSON response with `commands`, `triggered_rules`, and
+  `reasons`.
+- **Explicitly flagged, not fixed:** `vertical_slice.cpp` applies the
+  decision engine's output directly with no safety supervisor. Stated in
+  the file's header comment and in `firmware/README.md`'s open questions --
+  `logic/safety.py` has not been ported to firmware, so nothing here
+  enforces low-tank pump protection, emergency stop, or a fault/stale-data
+  safe servo position. Not safe to run unattended.
+- Added `[env:vertical_slice]` to `firmware/platformio.ini`.
+
+Evidence:
+
+- `firmware/include/decision.h` and `firmware/src/vertical_slice.cpp`
+  reviewed for syntax/structure and Arduino/ArduinoJson/U8g2/ESP32Servo API
+  usage from memory. **No `pio run` build was performed** -- same caveat as
+  Stage 4: no PlatformIO toolchain, WiFi network, or physical board access
+  in this environment. Treat as a reviewed draft.
+
+Status updates:
+
+- Roadmap tasks 31, 33, 34, 35, 36, 37 marked `active` (drafted,
+  unverified).
+- Roadmap task 32 ("Send temperature with curl") and tasks 38-40 (repeated
+  messages, invalid values, timeout/recovery) remain `todo` -- they are
+  test-execution tasks that need the real board and network, not something
+  that can be drafted in advance.
+- No branch status changes: per the system-recheck session's standard,
+  unverified/never-compiled C++ stays below the "implemented" bar already
+  earned by the host-tested Python in `logic/`.
+
+Next task: build/upload `env:vertical_slice`, add real WiFi credentials,
+and send a test `POST /sensor` with `curl` (roadmap task 32) -- confirm the
+response JSON, the OLED contents, and that the servo actually moves to the
+expected angle. Then decide whether to port `logic/safety.py` to firmware
+before continuing further into Stage 5/7.
 
 Date: 2026-08-04 JST (dashboard staleness bug fixed)
 
@@ -534,7 +591,11 @@ These must not be guessed:
   pin in `firmware/platformio.ini` for reproducible builds.
 - Real WiFi credentials for `firmware/include/secrets.h`.
 - Whether the placeholder runtime tuning constants (10s stale-data timeout,
-  5-message recovery threshold, 2048-byte max request body) are acceptable.
+  5-message recovery threshold, 2048-byte max request body, -40C to 85C
+  temperature validation range) are acceptable.
+- Whether `logic/safety.py` should be ported to firmware before Stage 5
+  continues -- `firmware/src/vertical_slice.cpp` currently has no safety
+  override layer.
 
 Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
 (sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
@@ -551,8 +612,9 @@ Stage 1 (tasks 1-4) is fully done. Stage 3 (Local physical outputs): servo
 tasks (20, 23) are done from direct hardware observation; OLED/NeoPixel/
 buzzer/combined-output test environments are drafted in `firmware/`
 (PlatformIO) but unverified by a build or hardware run. Stage 4 (ESP
-runtime, tasks 24-30) is drafted in `firmware/src/runtime.cpp` and
-`include/`, also unverified -- it has never been through `pio run`.
+runtime, tasks 24-30) and Stage 5's first vertical slice (tasks 31/33-37)
+are drafted in `firmware/src/runtime.cpp`, `firmware/src/vertical_slice.cpp`,
+and `include/`, also unverified -- none of it has been through `pio run`.
 
 Follow the blueprint order. The next open tasks are:
 
@@ -565,10 +627,15 @@ Follow the blueprint order. The next open tasks are:
    owner to first answer the pump/fan pin question in
    `data/agent-coordination.json` (`agent-02-hardware`), since this board has
    no built-in pump/fan output.
-4. Get `env:runtime` actually building (roadmap tasks 24-30, `active`,
-   drafted): fix whatever compile errors turn up, add real WiFi credentials
-   to `firmware/include/secrets.h`, and test `POST /sensor` against the
-   real board (e.g. with `curl`).
+4. Get `env:runtime` and `env:vertical_slice` actually building (roadmap
+   tasks 24-30 and 31/33-37, `active`, drafted): fix whatever compile
+   errors turn up, add real WiFi credentials to
+   `firmware/include/secrets.h`, and test `POST /sensor` against
+   `vertical_slice` with `curl` (roadmap task 32) -- confirm the response
+   JSON, OLED contents, and servo motion.
+5. Decide whether `logic/safety.py` needs porting to firmware before Stage
+   5 continues further (currently `vertical_slice.cpp` has no safety
+   override layer).
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before

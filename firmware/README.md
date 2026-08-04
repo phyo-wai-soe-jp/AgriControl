@@ -1,4 +1,4 @@
-# Firmware (Stage 3 - Local physical outputs; Stage 4 - ESP runtime)
+# Firmware (Stage 3 - Local physical outputs; Stage 4 - ESP runtime; Stage 5 - First vertical slice)
 
 PlatformIO / Arduino C++ project for the confirmed board: **ESP32-C3M-TRY**
 (MicroFan), module **ESP32-C3-MINI-1** (RISC-V, 4MB flash). Board facts and
@@ -28,12 +28,13 @@ pio run -e test_buzzer -t upload      # roadmap task 19
 pio run -e test_servo -t upload       # roadmap task 20
 pio run -e test_all_outputs -t upload # roadmap task 21 (run after 17-19)
 pio run -e runtime -t upload          # roadmap tasks 24-30 (needs secrets.h)
+pio run -e vertical_slice -t upload   # roadmap tasks 31/33-37 (needs secrets.h)
 pio device monitor                    # serial output, 115200 baud
 ```
 
-`env:runtime` needs WiFi credentials: copy `include/secrets.h.example` to
-`include/secrets.h` and fill in real values. `secrets.h` is gitignored and
-must never be committed.
+`env:runtime` and `env:vertical_slice` need WiFi credentials: copy
+`include/secrets.h.example` to `include/secrets.h` and fill in real values.
+`secrets.h` is gitignored and must never be committed.
 
 ## Pin map (manual Table 5.2)
 
@@ -94,6 +95,15 @@ must never be committed.
   validation (task 30). Does **not** call a decision engine or drive any
   actuator -- that wiring, plus sensor-specific range validation, is
   Stage 5 (roadmap tasks 31-40).
+- `include/decision.h` - Stage 5 task 34: temperature-only decision rules,
+  matching `logic/decision.py` exactly (`<=28C` fan off/window closed,
+  `28-35C` fan on/window half, `>35C` fan on/window fully open).
+- `src/vertical_slice.cpp` (`env:vertical_slice`) - Stage 5 tasks
+  31/33/34/35/36/37: temperature range validation, the decision engine,
+  servo output, OLED display, and a full JSON response with commands and
+  reasons. **No safety supervisor is wired in** -- read the file header
+  before using this beyond a bench test. Soil moisture, tank level, and
+  rain are Stage 7, not this slice.
 
 ## Resolved this session
 
@@ -118,5 +128,10 @@ generic eval board, not the AgriControl greenhouse build:
    the board to join).
 5. Whether the placeholder tuning constants in `include/system_state.h`
    (`kDataStaleTimeoutMs = 10000`, `kRecoveryConsecutiveValidRequired = 5`)
-   and `src/runtime.cpp` (`kMaxRequestBodyBytes = 2048`) are acceptable, or
-   need different values for the real deployment.
+   and `src/runtime.cpp`/`src/vertical_slice.cpp`
+   (`kMaxRequestBodyBytes = 2048`) are acceptable, or need different values
+   for the real deployment.
+6. `src/vertical_slice.cpp` has no safety supervisor -- `logic/safety.py`
+   has not been ported to firmware. Porting it (own future task, not yet on
+   the roadmap as a numbered item) should happen before this drives
+   anything beyond a bench test.

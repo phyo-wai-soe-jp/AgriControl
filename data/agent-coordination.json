@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T08:00:00+09:00",
+  "updated_at": "2026-08-04T09:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -87,19 +87,21 @@
       "role": "ESP runtime agent",
       "model": "Claude Sonnet 5",
       "status": "needs_owner",
-      "current_work": "Drafted the Stage 4 ESP runtime (async loop, shared state, event log, stale-data detection, recovery, HTTP server, request-size/validation limits) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access in this environment.",
+      "current_work": "Drafted the Stage 4 ESP runtime and the Stage 5 first vertical slice (temperature-only: decision engine, servo output, OLED display, JSON response) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access in this environment.",
       "done_work": [
         "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h -- SensorState, SystemState (with the same Mode transition graph as logic/system_state.py), RecoveryTracker, and a fixed-capacity EventLog.",
         "Added firmware/src/runtime.cpp (env:runtime): WiFi connect, a WebServer on port 80 with POST /sensor, request-size limit, JSON parse validation, sequence monotonicity check, and unknown-field rejection. Does not yet call a decision engine or drive actuators (Stage 5).",
         "Added firmware/include/secrets.h.example as a WiFi-credential template (gitignored secrets.h, never committed).",
-        "Advanced branch 5 (ESP communication) to drafted and branch 12 (Observability) to implemented to reflect the new source."
+        "Advanced branch 5 (ESP communication) to drafted to reflect the new source (branch 12/Observability was briefly advanced to implemented too, then corrected back to drafted in the system-recheck session -- see agent-01-coordinator).",
+        "Added firmware/include/decision.h (temperature-only decision rules, matching logic/decision.py exactly) and firmware/src/vertical_slice.cpp (env:vertical_slice): temperature-range validation, decision engine, servo output, OLED display, and full JSON response (roadmap tasks 31, 33-37). Does NOT include a ported safety supervisor -- flagged explicitly in the file header and firmware/README.md."
       ],
-      "next_work": "Owner: create firmware/include/secrets.h with real WiFi credentials; build/upload env:runtime (pio run -e runtime -t upload); send a test POST to /sensor (e.g. with curl) and report the response/serial log; confirm or adjust the placeholder tuning constants (10s stale timeout, 5-message recovery threshold, 2048-byte request cap).",
+      "next_work": "Owner: create firmware/include/secrets.h with real WiFi credentials; build/upload env:runtime and env:vertical_slice; send a test POST to /sensor (e.g. with curl, roadmap task 32) against vertical_slice and report the response/serial log/servo movement/OLED contents; confirm or adjust the placeholder tuning constants (10s stale timeout, 5-message recovery threshold, 2048-byte request cap, -40C to 85C temperature range).",
       "needs_owner": true,
       "owner_questions": [
         "Real WiFi SSID/password for firmware/include/secrets.h.",
-        "Are the placeholder runtime constants (stale-data timeout, recovery threshold, max request body size) acceptable, or do they need different values?",
-        "Once env:runtime builds: what curl command and response would you like recorded as the task 29/30 evidence?"
+        "Are the placeholder runtime constants (stale-data timeout, recovery threshold, max request body size, temperature validation range) acceptable, or do they need different values?",
+        "Once env:vertical_slice builds: what curl command and response would you like recorded as the task 32/38/39/40 evidence?",
+        "Should the safety supervisor (logic/safety.py) be ported to firmware before more Stage 5 work continues, given vertical_slice.cpp currently applies decisions with no override layer?"
       ],
       "blueprint_scope": ["Stage 4", "Stage 5", "Branches 5, 7, 12, 13"]
     },
