@@ -17,7 +17,7 @@ constexpr int I2C_SDA = 8;
 constexpr int NEOPIXEL = 10;        // WS2812 x3, onboard
 constexpr int NEOPIXEL_COUNT = 3;
 
-constexpr int BUZZER = 21;          // piezo buzzer, drive with PWM/tone()
+constexpr int BUZZER = 21;          // piezo buzzer, drive via LEDC PWM (not tone())
 constexpr int LIGHT_SENSOR = 1;     // phototransistor, analog (ADC)
 
 constexpr int CN2_PIR = 20;         // optional PIR motion sensor header

@@ -52,6 +52,34 @@ constexpr bool kEmergencyStopActive = false;
 constexpr bool kControllerFaultActive = false;
 constexpr bool kConfiguredSafeFanState = false;
 
+// The Arduino core's tone()/noTone() are not reliably supported on the
+// ESP32 (particularly on the C3's RISC-V core), so the buzzer is driven
+// directly through the LEDC PWM peripheral instead -- confirmed working
+// on this exact board by github.com/phyo-wai-soe-jp/Full-control-on-ESP32
+// (src/main.cpp), a separately owner-tested project on the same hardware.
+// Channel 5 keeps this off any channel ESP32Servo/other peripherals claim.
+constexpr int kBuzzerChannel = 5;
+constexpr int kBuzzerPwmResolutionBits = 10;
+bool buzzerAttached = false;
+unsigned long buzzerOffAtMs = 0;
+
+void playBuzzerTone(int frequency, int durationMs) {
+  if (!buzzerAttached) {
+    ledcSetup(kBuzzerChannel, 1000, kBuzzerPwmResolutionBits);
+    ledcAttachPin(pins::BUZZER, kBuzzerChannel);
+    buzzerAttached = true;
+  }
+  ledcWriteTone(kBuzzerChannel, frequency);
+  buzzerOffAtMs = millis() + static_cast<unsigned long>(durationMs);
+}
+
+void serviceBuzzer(unsigned long nowMs) {
+  if (buzzerOffAtMs != 0 && nowMs >= buzzerOffAtMs) {
+    ledcWriteTone(kBuzzerChannel, 0);
+    buzzerOffAtMs = 0;
+  }
+}
+
 WebServer server(80);
 SharedState shared;
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C oled(U8G2_R0, U8X8_PIN_NONE);
@@ -104,17 +132,18 @@ void updateStatusPixels(const char* alarmLevel) {
 
 // Roadmap task 56: buzzer sounds only on alarm-level state changes, per
 // the blueprint ("Buzzer sounds only on state changes"). One short,
-// non-blocking tone() call per change -- severity communicated by pitch
-// (lower = more urgent), not by a multi-beep pattern, so this never
-// blocks the HTTP handler with delay(). This pitch choice is an explicit
-// design decision, not specified by the blueprint.
+// non-blocking tone via playBuzzerTone() per change -- severity
+// communicated by pitch (lower = more urgent), not by a multi-beep
+// pattern, so this never blocks the HTTP handler with delay(). This
+// pitch choice is an explicit design decision, not specified by the
+// blueprint.
 void soundAlarmChangeTone(const char* alarmLevel) {
   if (strcmp(alarmLevel, "critical") == 0) {
-    tone(pins::BUZZER, 440, 400);
+    playBuzzerTone(440, 400);
   } else if (strcmp(alarmLevel, "warning") == 0) {
-    tone(pins::BUZZER, 660, 250);
+    playBuzzerTone(660, 250);
   } else {
-    tone(pins::BUZZER, 880, 120);
+    playBuzzerTone(880, 120);
   }
 }
 
@@ -325,4 +354,5 @@ void setup() {
 void loop() {
   server.handleClient();
   shared.tick(millis());
+  serviceBuzzer(millis());
 }

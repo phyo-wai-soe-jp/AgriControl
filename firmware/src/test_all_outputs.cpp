@@ -20,11 +20,19 @@
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE);
 Adafruit_NeoPixel rgb(pins::NEOPIXEL_COUNT, pins::NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
+// LEDC-backed buzzer drive, not tone()/noTone() -- see test_buzzer.cpp for
+// why.
+namespace {
+constexpr int kBuzzerChannel = 5;
+constexpr int kBuzzerPwmResolutionBits = 10;
+}  // namespace
+
 void setup() {
   Wire.begin(pins::I2C_SDA, pins::I2C_SCL);
   u8g2.begin();
   rgb.begin();
-  pinMode(pins::BUZZER, OUTPUT);
+  ledcSetup(kBuzzerChannel, 1000, kBuzzerPwmResolutionBits);
+  ledcAttachPin(pins::BUZZER, kBuzzerChannel);
 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_6x10_tf);
@@ -39,8 +47,10 @@ void loop() {
     rgb.setPixelColor(i, rgb.Color(0, 30, 0));
   }
   rgb.show();
-  tone(pins::BUZZER, 880, 150);
-  delay(1000);
+  ledcWriteTone(kBuzzerChannel, 880);
+  delay(150);
+  ledcWriteTone(kBuzzerChannel, 0);
+  delay(850);
 
   for (int i = 0; i < pins::NEOPIXEL_COUNT; i++) {
     rgb.setPixelColor(i, 0);

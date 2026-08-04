@@ -71,6 +71,68 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (buzzer fix ported from owner's other ESP32-C3M-TRY project)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+The owner pointed at a separate, actively hardware-tested repo on the same
+GitHub account -- `phyo-wai-soe-jp/Full-control-on-ESP32` -- running on the
+identical ESP32-C3M-TRY board, and asked for its code to be ported into
+AgriControl where useful. That repo uses a materially different
+communication architecture (MQTT over TLS via EMQX Cloud, relayed through a
+Cloudflare Worker + Durable Object, for remote access from anywhere) instead
+of AgriControl's local-HTTP-only design. That architecture is **not**
+adopted here: the blueprint already places MQTT at Stage 12 ("Platform
+growth"), and `docs/AI_CONTINUITY_SYSTEM.md` explicitly says to avoid MQTT
+and cloud services until the first local control loop is proven stable.
+Adopting it now would be a large, unrequested architecture change well past
+what "port useful code" calls for.
+
+What *was* ported is one concrete, hardware-justified correctness fix, plus
+confirmation of the existing pin map:
+
+- `firmware/include/pins.h`'s pin assignments (NeoPixel D10, buzzer D21,
+  servo D7, I2C SDA D8/SCL D9, phototransistor D1) match
+  `Full-control-on-ESP32/src/main.cpp` exactly -- independent, hardware-run
+  confirmation of the board's pin table beyond the owner's manual alone.
+- `firmware/src/irrigation_slice.cpp`'s buzzer previously used Arduino's
+  `tone()`. The reference firmware deliberately avoids `tone()`/`noTone()`
+  in favor of driving the piezo directly through the ESP32's LEDC PWM
+  peripheral (`ledcSetup`/`ledcAttachPin`/`ledcWriteTone`), with a comment
+  noting `tone()` support is unreliable on this core. `tone()`/`noTone()`
+  are a known ESP32 Arduino-core gap (originally AVR-only, inconsistently
+  backported, particularly shaky on RISC-V parts like the C3). Ported the
+  same LEDC approach into `soundAlarmChangeTone()`, adding a non-blocking
+  `serviceBuzzer()` step (called from `loop()`) to turn the tone off after
+  its duration, since raw `ledcWriteTone` has no built-in auto-stop the way
+  `tone(pin, freq, duration)` does.
+- Considered but **not** changed: the reference repo uses
+  `Adafruit_SSD1306`+`Adafruit_GFX` for its OLED where AgriControl's
+  firmware uses `U8g2` (`U8G2_SSD1306_128X64_NONAME_F_HW_I2C`, hardware
+  I2C). Both are legitimate, widely-used libraries for this exact display;
+  unlike `tone()`, there's no evidence U8g2 is actually broken on this
+  hardware, only that the other repo made a different valid choice. Not
+  swapping four firmware files' OLED code without a demonstrated defect.
+
+Evidence: line-by-line comparison against the cloned reference repo's
+`src/main.cpp`. Still **no `pio run` build** -- this remains a reviewed
+port, not verified working code, same caveat as every other firmware file.
+Roadmap task 56 stays `active` (unchanged); this is a correctness
+improvement to existing unverified code, not new coverage.
+
+Security note, unrelated to AgriControl's own state but worth recording:
+`Full-control-on-ESP32` is a **public** GitHub repo whose checked-in
+`src/main.cpp` contains the owner's real WiFi password and real MQTT
+broker credentials in plaintext (its own README acknowledges this and asks
+for placeholder substitution before sharing, which was never done). Flagged
+directly to the owner; no credential values were copied into AgriControl
+anywhere -- AgriControl's own `firmware/include/secrets.h` stays gitignored
+per the existing `secrets.h.example` pattern.
+
+Next task: unchanged from the Stage 7 entry below -- pump/fan GPIO
+assignment is still the blocker for physical irrigation actuation; highest-
+value remaining software-only work is Stage 8/9.
+
 Date: 2026-08-04 JST (Stage 7 irrigation slice)
 
 Agent: agent-04-firmware-runtime, agent-05-backend, agent-06-frontend-sim

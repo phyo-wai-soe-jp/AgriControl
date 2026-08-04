@@ -47,7 +47,7 @@ fill in real values. `secrets.h` is gitignored and must never be committed.
 | SW5 | RST | reset |
 | NeoPixel x3 | D10 | WS2812, `Adafruit_NeoPixel` |
 | I2C (OLED, AHT21, KXTJ3-1057) | SCL=D9, SDA=D8 | |
-| Piezo buzzer | D21 | drive with `tone()`/PWM |
+| Piezo buzzer | D21 | drive via LEDC PWM (`ledcWriteTone`), not `tone()` -- see task 19 notes |
 | Light sensor (phototransistor) | D1 | analog (ADC) |
 | CN2 (PIR motion sensor, optional) | D20 | |
 | CN3 (RC servo, optional) | D7 | |
@@ -66,8 +66,11 @@ fill in real values. `secrets.h` is gitignored and must never be committed.
 - `src/test_oled.cpp` - Stage 3 task 17. Needs the `U8g2` library (declared
   in `platformio.ini`).
 - `src/test_neopixel.cpp` - Stage 3 task 18. Needs `Adafruit_NeoPixel`.
-- `src/test_buzzer.cpp` - Stage 3 task 19. Uses the Arduino-ESP32 core's
-  `tone()`/`noTone()`.
+- `src/test_buzzer.cpp` - Stage 3 task 19. Drives the buzzer via the LEDC
+  PWM peripheral directly (`ledcWriteTone`), not the Arduino-ESP32 core's
+  `tone()`/`noTone()`, which are not reliably supported on this chip --
+  confirmed by github.com/phyo-wai-soe-jp/Full-control-on-ESP32, a
+  separate owner-tested project on the same board.
 - `src/test_servo.cpp` - Stage 3 task 20. Needs `ESP32Servo`. Drives the CN3
   RC servo header to the three greenhouse window angles used by
   `logic/decision.py` (`WINDOW_CLOSED_DEG=10`, `WINDOW_HALF_DEG=90`,
