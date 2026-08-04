@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T05:00:00+09:00",
+  "updated_at": "2026-08-04T06:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -45,19 +45,21 @@
       "role": "Hardware facts agent",
       "model": "Claude Sonnet 5",
       "status": "needs_owner",
-      "current_work": "Board, pin map, and OLED/NeoPixel/buzzer/servo-header wiring confirmed from the owner-provided ESP32-C3M-TRY manual. Drafted Stage 3 firmware test scripts against the confirmed pin map. Still needs the owner for the on-device MicroPython version and the greenhouse-specific servo/pump/fan wiring plan.",
+      "current_work": "Board, pin map, and OLED/NeoPixel/buzzer/servo-header wiring confirmed from the owner-provided ESP32-C3M-TRY manual. Firmware toolchain decided (PlatformIO + Arduino C++, not MicroPython) and Stage 3 scripts rewritten to match. Servo power stability confirmed on real hardware. Still needs the owner for the RC servo model, pump/fan pin assignment, and OLED/NeoPixel/buzzer hardware verification.",
       "done_work": [
         "Confirmed board: ESP32-C3M-TRY (MicroFan), module ESP32-C3-MINI-1 (RISC-V, 4MB flash), from ESP32-C3M-TRY-R1-20230701.pdf.",
         "Recorded the complete pin map (Table 5.2) in firmware/README.md.",
         "Confirmed OLED (I2C scl=D9/sda=D8), NeoPixel (D10, x3), and buzzer (D21, PWM) wiring with working code references from the manual.",
-        "Drafted firmware/boot.py and firmware/test_oled.py, test_neopixel.py, test_buzzer.py, test_servo.py for Stage 3 tasks 17-20, unverified on physical hardware."
+        "Recorded the firmware toolchain decision (PlatformIO, Arduino framework, C++) after the owner confirmed the physical board (/dev/cu.usbmodem1101) already runs Arduino/PlatformIO firmware, not MicroPython.",
+        "Rewrote firmware/ as a PlatformIO project: platformio.ini, include/pins.h, src/main.cpp, and src/test_oled.cpp, test_neopixel.cpp, test_buzzer.cpp, test_servo.cpp for Stage 3 tasks 17-20.",
+        "Recorded confirmed hardware evidence: cycling the servo repeatedly through motion does not reset the ESP (roadmap tasks 20 and 23 done)."
       ],
-      "next_work": "Owner: run firmware/test_*.py on the physical board via Thonny and report results; confirm on-device MicroPython version (sys.implementation); confirm the RC servo model/power source at CN3; decide spare GPIO/relay assignment for pump and fan (not built into this eval board).",
+      "next_work": "Owner: build/upload firmware/ test environments (pio run -e test_oled|test_neopixel|test_buzzer -t upload) and report results; confirm the RC servo model at CN3; decide the spare GPIO/relay assignment for pump and fan; confirm exact PlatformIO platform/Arduino-ESP32 core versions for platformio.ini.",
       "needs_owner": true,
       "owner_questions": [
-        "What MicroPython version is currently flashed on the physical ESP32-C3M-TRY unit?",
-        "Which RC servo model is connected to CN3 (pin D7), and is it powered separately from USB 5V?",
-        "Which spare pins should drive the pump and fan relays, since this eval board has no built-in pump/fan output?"
+        "Which RC servo model is connected to CN3 (pin D7)? Power source stability is already confirmed.",
+        "Which spare pins should drive the pump and fan relays, since this eval board has no built-in pump/fan output?",
+        "What exact platform-espressif32 and Arduino-ESP32 core versions are installed for the existing PlatformIO project on this board, so firmware/platformio.ini can pin the same versions?"
       ],
       "blueprint_scope": ["Stage 1", "Stage 3", "Gate A"]
     },

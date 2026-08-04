@@ -181,9 +181,9 @@ Implementation prompt:
 ```text
 You are completing Stage 1: Foundations for AgriControl.
 Stage intent: Board, wiring, use case, safe states, protocol, and acceptance tests.
-Output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
-Tasks in scope: 1. Confirm the exact ESP32-C3 board. 2. Record the MicroPython version. 3. Create the complete pin map. 4. Verify OLED, NeoPixel, buzzer, and servo wiring. 5. Define the first use case. 6. Define safe states. 7. Define the communication protocol. 8. Define acceptance tests.
+Tasks in scope: 1. Confirm the exact ESP32-C3 board. 2. Record the firmware toolchain and version. 3. Create the complete pin map. 4. Verify OLED, NeoPixel, buzzer, and servo wiring. 5. Define the first use case. 6. Define safe states. 7. Define the communication protocol. 8. Define acceptance tests.
 Work in roadmap order unless a blocker is documented.
 Keep changes narrow enough to verify in one session.
 Update project state and progress baseline only with evidence.
@@ -1045,7 +1045,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1076,17 +1076,17 @@ Test requirements:
 Known hazards to check: Do not invent board variants or pin mappings. Do not mark wiring verified without evidence. Do not start platform features before the foundation is stable.
 ```
 
-### TASK-S01-02 - Record the MicroPython version.
+### TASK-S01-02 - Record the firmware toolchain and version.
 
 Implementation prompt:
 
 ```text
-You are implementing AgriControl roadmap task 2: Record the MicroPython version.
+You are implementing AgriControl roadmap task 2: Record the firmware toolchain and version.
 Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1105,7 +1105,7 @@ Stop condition: if required hardware facts are missing, record the blocker inste
 Test prompt:
 
 ```text
-You are testing AgriControl roadmap task 2: Record the MicroPython version.
+You are testing AgriControl roadmap task 2: Record the firmware toolchain and version.
 Verify the task within Stage 1 - Foundations.
 Use this stage test focus: Verify the recorded facts against hardware evidence, commands, photos, serial output, or explicit user confirmation.
 Test requirements:
@@ -1127,7 +1127,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1168,7 +1168,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1209,7 +1209,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1250,7 +1250,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1291,7 +1291,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.
@@ -1332,7 +1332,7 @@ Blueprint stage: Stage 1 - Foundations.
 Affected branches: B1: Product definition; B4: Protocol; B11: Physical outputs; B13: Testing.
 Read AGENTS.md, docs/PROJECT_STATE.md, docs/AI_CONTINUITY_SYSTEM.md, data/progress-baseline.json, and the blueprint PDF before editing.
 Objective: deliver the smallest durable change that advances this task and supports Board, wiring, use case, safe states, protocol, and acceptance tests.
-Stage output target: A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
+Stage output target: A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.
 Implementation focus: Collect facts, write durable specifications, and avoid guessing hardware details.
 Architecture constraints:
 - The ESP32 remains the control authority.

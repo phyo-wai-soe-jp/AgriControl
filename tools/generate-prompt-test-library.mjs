@@ -11,7 +11,7 @@ const baseline = JSON.parse(await readFile(baselinePath, "utf8"));
 const stageBlueprint = {
   1: {
     branchIds: [1, 4, 11, 13],
-    output: "A confirmed hardware and requirements foundation: board, MicroPython version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.",
+    output: "A confirmed hardware and requirements foundation: board, firmware toolchain and version, pin map, wiring checks, first use case, safe states, protocol, and acceptance tests.",
     implementationFocus: "Collect facts, write durable specifications, and avoid guessing hardware details.",
     testFocus: "Verify the recorded facts against hardware evidence, commands, photos, serial output, or explicit user confirmation.",
     hazards: ["Do not invent board variants or pin mappings.", "Do not mark wiring verified without evidence.", "Do not start platform features before the foundation is stable."]

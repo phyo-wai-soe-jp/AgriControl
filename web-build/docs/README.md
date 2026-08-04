@@ -42,9 +42,10 @@ control lab.
   actuator state, the stateful decision engine, and the safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`
   (`python3 -m unittest discover -s tests`).
-- `firmware/` - MicroPython source for the confirmed ESP32-C3M-TRY board:
-  `boot.py` and Stage 3 output test scripts (OLED, NeoPixel, buzzer, servo),
-  unverified on physical hardware.
+- `firmware/` - PlatformIO / Arduino C++ project for the confirmed
+  ESP32-C3M-TRY board: `main.cpp` and Stage 3 output test environments
+  (OLED, NeoPixel, buzzer, servo), unverified by a build in this
+  environment.
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model

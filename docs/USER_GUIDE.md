@@ -59,7 +59,7 @@ It can show:
 Good answers include exact facts:
 
 - Exact ESP32-C3 board model.
-- MicroPython version.
+- Firmware toolchain and version (e.g. PlatformIO + Arduino-ESP32 core).
 - Pin map.
 - Hardware wiring status.
 - Servo power test result.

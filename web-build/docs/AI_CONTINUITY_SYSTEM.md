@@ -53,8 +53,12 @@ At the beginning of every continuation session:
 10. Choose the next task from the roadmap, preferring the earliest open task on
    the critical path.
 
-Do not guess hardware facts. If the exact board, MicroPython version, pin map,
-or wiring evidence is missing, keep the relevant task open or blocked.
+Do not guess hardware facts. If the exact board, firmware toolchain/version,
+pin map, or wiring evidence is missing, keep the relevant task open or
+blocked.
+
+Firmware is built with PlatformIO (Arduino framework, C++), not MicroPython
+-- see `firmware/` and `docs/PROJECT_STATE.md` for the toolchain decision.
 
 ## Systematic Work Cycle
 

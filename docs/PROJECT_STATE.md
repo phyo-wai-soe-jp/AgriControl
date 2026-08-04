@@ -1,6 +1,7 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (Stage 1 hardware facts + Stage 3 firmware drafts)
+Last updated: 2026-08-04 JST (firmware toolchain decision: PlatformIO/Arduino
+C++, not MicroPython; servo power confirmed)
 
 ## Live Links
 
@@ -42,15 +43,16 @@ Important files:
 - `logic/` - host-runnable pure logic: canonical sensor state, system/actuator
   state, decision engine, safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
-- `firmware/` - MicroPython source for the physical ESP32-C3M-TRY board:
-  `boot.py` and Stage 3 output test scripts, unverified on hardware.
+- `firmware/` - PlatformIO / Arduino C++ project for the physical
+  ESP32-C3M-TRY board: `main.cpp` and Stage 3 output test environments,
+  unverified by a build in this environment.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 26%
-- Roadmap execution: 21%
+- Overall progress: 27%
+- Roadmap execution: 24%
 - Branch readiness: 37%
 - Completion gates: 0%
 - Central control-loop coverage: 45%
@@ -61,11 +63,88 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
-Date: 2026-08-04 JST (Stage 1 hardware facts + Stage 3 firmware drafts)
+Date: 2026-08-04 JST (firmware toolchain decision + servo power confirmed)
 
 Agent: agent-02-hardware (Claude Sonnet 5).
 
+Owner-provided evidence and decisions this session:
+
+- The board on serial port `/dev/cu.usbmodem1101` is the same physical
+  ESP32-C3M-TRY used for AgriControl, currently running an Arduino/PlatformIO
+  test sketch rather than MicroPython.
+- Decision: AgriControl's firmware layer (Stage 3+) is built with
+  **PlatformIO, Arduino framework, C++**, not MicroPython. This supersedes
+  the blueprint's roadmap task 2 wording ("Record the MicroPython version"),
+  which is now interpreted as "record the firmware toolchain and version."
+  `data/progress-baseline.json` task 2's title was updated to match, and
+  `tools/generate-prompt-test-library.mjs` / `docs/USER_GUIDE.md` /
+  `docs/AI_CONTINUITY_SYSTEM.md` were updated so no durable doc still implies
+  MicroPython is the plan.
+- Servo power stability (roadmap task 23): confirmed by direct observation
+  on the live board while a servo was cycled repeatedly through motion (a
+  sweep into a rapid back-and-forth pattern between roughly 0 deg and 58
+  deg) -- the ESP did not reset. This test used the board's existing
+  Arduino/PlatformIO sketch, not the newly-added `firmware/src/test_servo.cpp`
+  below, which has not itself been flashed yet.
+
 Changed:
+
+- Deleted the prior session's MicroPython scripts (`firmware/boot.py`,
+  `test_oled.py`, `test_neopixel.py`, `test_buzzer.py`, `test_servo.py`) --
+  superseded by the toolchain decision above, and left in place they would
+  have misled a future agent into thinking MicroPython was still the plan.
+- Added a PlatformIO project in `firmware/`: `platformio.ini` (one
+  environment per test file via `build_src_filter`, board
+  `esp32-c3-devkitm-1` as the closest chip-accurate match for the
+  ESP32-C3-MINI-1 module), `include/pins.h` (shared pin constants from the
+  manual's Table 5.2), `src/main.cpp` (LED-blink bring-up placeholder), and
+  `src/test_oled.cpp` / `test_neopixel.cpp` / `test_buzzer.cpp` /
+  `test_servo.cpp` for roadmap tasks 17-20. None of this has been built with
+  `pio run` in this environment -- there is no PlatformIO toolchain or board
+  access here, so it is unverified beyond visual review.
+- Updated `data/progress-baseline.json`, `data/agent-coordination.json`,
+  `docs/USER_GUIDE.md`, `docs/AI_CONTINUITY_SYSTEM.md`,
+  `tools/generate-prompt-test-library.mjs`, and README/AGENTS files to
+  remove MicroPython-specific wording and reflect the PlatformIO decision;
+  regenerated `docs/PROMPT_TEST_LIBRARY.md` and
+  `data/prompt-test-library.json`.
+
+Evidence (this session):
+
+- Direct observation of the physical board while the servo cycled
+  repeatedly (owner-reported, not reproducible from this environment).
+- `firmware/*.cpp` and `platformio.ini` reviewed for syntax/structure only;
+  no `pio run` build was performed here.
+
+Status updates (this session):
+
+- Roadmap task 2 marked `done` (title changed to "Record the firmware
+  toolchain and version"; toolchain is confirmed as PlatformIO/Arduino C++).
+- Roadmap tasks 20 and 23 marked `done` (servo motion observed; ESP did not
+  reset).
+- Roadmap tasks 17-19 remain `active` (still unverified on hardware).
+- `known_unknowns` updated: MicroPython version and generic servo-power
+  unknowns removed; exact RC servo model, pump/fan pin assignment, and
+  exact PlatformIO/Arduino-ESP32 core versions remain open.
+
+Blockers (owner input still needed, tracked in `data/agent-coordination.json`
+under `agent-02-hardware`):
+
+1. Which RC servo model is attached to CN3? (Power stability is resolved;
+   the model itself is not.)
+2. Which spare GPIO/relay will drive the greenhouse pump and fan? This eval
+   board has no built-in pump or fan output.
+3. Exact `platform-espressif32` / Arduino-ESP32 core versions in use, to pin
+   in `firmware/platformio.ini` for reproducible builds.
+
+Next task: build/upload `firmware/` test environments
+(`pio run -e test_oled|test_neopixel|test_buzzer -t upload`) on the physical
+board and report the results; answer the three blockers above before
+advancing Stage 3 further (tasks 21-22).
+
+Older changes (previous session: Stage 1 hardware facts + Stage 3 firmware
+drafts, superseded above where noted -- the firmware was MicroPython at the
+time and has since been rewritten in PlatformIO/Arduino C++):
 
 - Confirmed the exact ESP32-C3 board (roadmap task 1): **ESP32-C3M-TRY** by
   MicroFan, using the **ESP32-C3-MINI-1** module (RISC-V core, 4MB flash).
@@ -89,48 +168,24 @@ Changed:
 - Advanced branch 11 (Physical outputs) to `drafted`: test source exists but
   is unverified on physical hardware.
 
-Source of hardware facts:
+Source of hardware facts (previous session):
 
 - `ESP32-C3M-TRY-R1-20230701.pdf` ("ESP32-C3M-TRY 取扱説明書"), MicroFan,
   2023-07-01, provided directly by the project owner.
 
-Evidence:
+Evidence (previous session):
 
 - Manual sections 1.1, 2.1-2.8, and 5.1-5.3 (board overview, peripheral
   descriptions, schematic, and pin table) cited directly for the board
   identity and pin map above.
-- `firmware/*.py` syntax-checked with `python3 -m py_compile` (MicroPython
-  modules such as `machine`, `neopixel`, and `ssd1306` cannot be imported or
-  executed outside the physical device, so this confirms syntax only, not
-  on-hardware behavior).
+- The MicroPython scripts referenced here were syntax-checked and later
+  deleted; see "Changed" above for the PlatformIO/C++ replacements.
 
-Status updates:
+Status updates (previous session, superseded above):
 
-- Roadmap tasks 1, 3, 4 marked `done`.
-- Roadmap task 2 marked `active`: the manual's example firmware version
-  (`v1.20.0`, dated 2023-07) is not proof of what is actually flashed on the
-  physical unit today; needs an on-device check.
-- Roadmap tasks 17-20 marked `active`: source drafted, awaiting on-hardware
-  verification and evidence.
-- Branch 10 corrected to `implemented`; branch 11 advanced to `drafted`.
-
-Blockers (owner input needed, tracked in `data/agent-coordination.json` under
-`agent-02-hardware`):
-
-1. Confirm the MicroPython version actually running on the board:
-   `import sys; print(sys.implementation)` in the Thonny REPL.
-2. Which RC servo model is attached to CN3 (pin D7), and is it powered
-   separately from the USB 5V rail? (Roadmap task 23 - servo power must not
-   reset the ESP - cannot be assessed from the manual, which only documents
-   the bare 3-pin header.)
-3. Which spare GPIO/relay will drive the greenhouse pump and fan? This eval
-   board has no built-in pump or fan output, so this is new wiring, not
-   something the manual answers.
-
-Next task: run `firmware/test_oled.py`, `test_neopixel.py`, `test_buzzer.py`,
-and `test_servo.py` on the physical board via Thonny, capture the observed
-output as evidence, and answer the three blockers above before advancing
-Stage 3 further (tasks 21-23).
+- Roadmap tasks 1, 3, 4 marked `done` (still current).
+- Branch 10 corrected to `implemented`; branch 11 advanced to `drafted`
+  (still current).
 
 Date: 2026-08-04 JST (Stage 2 pure logic)
 
@@ -269,18 +324,18 @@ Status updates (older sessions, superseded above where noted):
 
 These must not be guessed:
 
-- MicroPython version actually flashed on the physical unit (the owner's
-  manual only documents the version available when it was written, 2023-07).
-- Exact RC servo model and power source used at CN3.
+- Exact RC servo model at CN3 (power source stability is confirmed; the
+  model itself is not recorded).
 - Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY
   eval board; this is new wiring specific to the AgriControl greenhouse
   build, not something the board's manual answers).
-- Real hardware power behavior, especially servo power stability
-  (roadmap task 23).
+- Exact `platform-espressif32` and Arduino-ESP32 core versions in use, to
+  pin in `firmware/platformio.ini` for reproducible builds.
 
-Resolved this session, sourced from the owner-provided
-`ESP32-C3M-TRY-R1-20230701.pdf`: exact board, complete pin map, and
-OLED/NeoPixel/buzzer wiring. See Completed Work above.
+Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
+(sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
+toolchain (PlatformIO, Arduino framework, C++ -- not MicroPython); servo
+power stability (roadmap task 23). See Completed Work above.
 
 ## Next Work
 
@@ -288,23 +343,22 @@ Stage 2 (Pure logic, tasks 9-16) is done: `logic/` implements canonical
 sensor state, system/actuator state, the stateful decision engine, and the
 safety supervisor, verified by 35 passing host-runnable tests in `tests/`.
 
-Stage 1 hardware facts (tasks 1, 3, 4) are done, sourced from the owner's
-ESP32-C3M-TRY manual. Stage 3 (Local physical outputs) test scripts are
-drafted in `firmware/` for tasks 17-20 but unverified on hardware.
+Stage 1 (tasks 1-4) is fully done. Stage 3 (Local physical outputs): servo
+tasks (20, 23) are done from direct hardware observation; OLED/NeoPixel/
+buzzer test environments are drafted in `firmware/` (PlatformIO) but
+unverified by a build or hardware run.
 
 Follow the blueprint order. The next open tasks are:
 
-1. Record the MicroPython version actually on the physical board. (`active`,
-   `needs_owner`: run `import sys; print(sys.implementation)` in Thonny.)
-2. Run `firmware/test_oled.py`, `test_neopixel.py`, `test_buzzer.py`, and
-   `test_servo.py` on the physical board and record the results as evidence
-   (roadmap tasks 17-20, `active`).
-3. Test all outputs together (roadmap task 21) once 17-20 have hardware
+1. Build and upload `firmware/`'s `test_oled`, `test_neopixel`, and
+   `test_buzzer` PlatformIO environments on the physical board and record
+   the results as evidence (roadmap tasks 17-19, `active`).
+2. Test all outputs together (roadmap task 21) once 17-19 have hardware
    evidence.
-4. Connect hardcoded decisions to outputs (roadmap task 22) and confirm
-   servo power does not reset the ESP (roadmap task 23) - both need the
-   owner to first answer the RC servo model/power and pump/fan pin
-   questions in `data/agent-coordination.json` (`agent-02-hardware`).
+3. Connect hardcoded decisions to outputs (roadmap task 22) - needs the
+   owner to first answer the pump/fan pin question in
+   `data/agent-coordination.json` (`agent-02-hardware`), since this board has
+   no built-in pump/fan output.
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
