@@ -2,3 +2,5 @@
 tmp/
 __pycache__/
 *.pyc
+firmware/include/secrets.h
+firmware/.pio/

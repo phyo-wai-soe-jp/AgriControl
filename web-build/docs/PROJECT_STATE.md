@@ -1,7 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (firmware toolchain decision: PlatformIO/Arduino
-C++, not MicroPython; servo power confirmed)
+Last updated: 2026-08-04 JST (Stage 4 ESP runtime drafted)
 
 ## Live Links
 
@@ -44,24 +43,97 @@ Important files:
   state, decision engine, safety supervisor.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
 - `firmware/` - PlatformIO / Arduino C++ project for the physical
-  ESP32-C3M-TRY board: `main.cpp` and Stage 3 output test environments,
-  unverified by a build in this environment.
+  ESP32-C3M-TRY board: `main.cpp`, Stage 3 output test environments, and a
+  drafted Stage 4 ESP runtime (`env:runtime`), unverified by a build in
+  this environment.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 27%
-- Roadmap execution: 24%
-- Branch readiness: 37%
+- Overall progress: 29%
+- Roadmap execution: 28%
+- Branch readiness: 41%
 - Completion gates: 0%
-- Central control-loop coverage: 45%
+- Central control-loop coverage: 48%
 
 These numbers come from the blueprint-derived model in
 `data/progress-baseline.json`. Browser-local edits on the public dashboard do
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (Stage 4 ESP runtime drafted)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+This session drafts the Stage 4 ESP runtime entirely without hardware
+access -- it's infrastructure code (async loop, shared state, events,
+stale-data detection, recovery, HTTP server, request-size/validation
+limits), not something that requires the physical board to write. It does
+require the board (and real WiFi credentials) to verify.
+
+Changed:
+
+- Added `firmware/include/canonical.h`: `SensorId`, `SensorReading`,
+  `SensorState`, mirroring `logic/canonical.py`'s model in C++ (roadmap
+  task 25, Branch 6/7).
+- Added `firmware/include/system_state.h`: `Mode`/`CommunicationState`
+  enums with the exact same transition graph as `logic/system_state.py`
+  (roadmap task 24), plus `RecoveryTracker` implementing the blueprint's
+  recovery chain -- Failure -> Safe state -> consecutive valid messages ->
+  stable communication -> clear fault -> resume automatic (roadmap task 28).
+  `kDataStaleTimeoutMs` (10s) and `kRecoveryConsecutiveValidRequired` (5)
+  are explicit tunable constants, not guessed hardware facts -- flagged for
+  owner confirmation.
+- Added `firmware/include/events.h`: fixed-capacity (32-entry) ring-buffer
+  event log, no dynamic growth (roadmap task 26, Branch 12).
+- Added `firmware/include/shared_state.h`: bundles sensors/system/
+  recovery/events into one `SharedState` with a non-blocking `tick()` that
+  detects staleness and drives WARNING -> RECOVERY -> AUTOMATIC transitions
+  (roadmap task 27).
+- Added `firmware/src/runtime.cpp` (`env:runtime`): connects WiFi, runs a
+  `WebServer` on port 80 with `POST /sensor`, enforces a request-size cap
+  (`kMaxRequestBodyBytes = 2048`, roadmap task 30), rejects malformed JSON,
+  rejects duplicate/out-of-order `sequence` values, and rejects messages
+  naming an unrecognized sensor field. Explicitly does **not** call a
+  decision engine or drive any actuator, and does not do per-sensor
+  range/type validation -- both are Stage 5 (roadmap task 33), out of
+  scope here.
+- Added `firmware/include/secrets.h.example` (WiFi credential template) and
+  gitignored `firmware/include/secrets.h` so real credentials are never
+  committed.
+- Added `[env:runtime]` to `firmware/platformio.ini` and declared the
+  `ArduinoJson` dependency.
+- Advanced branch 5 (ESP communication) `planned` -> `drafted` and branch
+  12 (Observability) `drafted` -> `implemented`.
+
+Evidence:
+
+- `firmware/include/*.h` and `firmware/src/runtime.cpp` reviewed for
+  syntax/structure and API usage against the Arduino-ESP32 core, `WebServer`,
+  and ArduinoJson v7 APIs from memory. **No `pio run` build was performed**
+  -- there is no PlatformIO toolchain, WiFi network, or physical board
+  access in this environment. Treat this as a reviewed draft, not verified
+  working code; normal to need small fixes once actually compiled.
+
+Status updates:
+
+- Roadmap tasks 24-30 marked `active` (drafted, unverified).
+- Branch 5 -> `drafted`; branch 12 -> `implemented`.
+
+Blockers (owner input needed, tracked in `data/agent-coordination.json`
+under `agent-04-firmware-runtime`):
+
+1. Real WiFi SSID/password for `firmware/include/secrets.h`.
+2. Build/upload `env:runtime` and send a test `POST /sensor` (e.g. via
+   `curl`); report the response and serial log as evidence.
+3. Confirm or adjust the placeholder tuning constants: 10s stale-data
+   timeout, 5-message recovery threshold, 2048-byte max request body.
+
+Next task: get `env:runtime` actually building (fix whatever compile errors
+turn up -- expected, since this was never compiled), then flash and test
+against the real board and WiFi network.
 
 Date: 2026-08-04 JST (firmware toolchain decision + servo power confirmed)
 
@@ -339,6 +411,9 @@ These must not be guessed:
   build, not something the board's manual answers).
 - Exact `platform-espressif32` and Arduino-ESP32 core versions in use, to
   pin in `firmware/platformio.ini` for reproducible builds.
+- Real WiFi credentials for `firmware/include/secrets.h`.
+- Whether the placeholder runtime tuning constants (10s stale-data timeout,
+  5-message recovery threshold, 2048-byte max request body) are acceptable.
 
 Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
 (sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
@@ -353,8 +428,10 @@ safety supervisor, verified by 35 passing host-runnable tests in `tests/`.
 
 Stage 1 (tasks 1-4) is fully done. Stage 3 (Local physical outputs): servo
 tasks (20, 23) are done from direct hardware observation; OLED/NeoPixel/
-buzzer test environments are drafted in `firmware/` (PlatformIO) but
-unverified by a build or hardware run.
+buzzer/combined-output test environments are drafted in `firmware/`
+(PlatformIO) but unverified by a build or hardware run. Stage 4 (ESP
+runtime, tasks 24-30) is drafted in `firmware/src/runtime.cpp` and
+`include/`, also unverified -- it has never been through `pio run`.
 
 Follow the blueprint order. The next open tasks are:
 
@@ -367,6 +444,10 @@ Follow the blueprint order. The next open tasks are:
    owner to first answer the pump/fan pin question in
    `data/agent-coordination.json` (`agent-02-hardware`), since this board has
    no built-in pump/fan output.
+4. Get `env:runtime` actually building (roadmap tasks 24-30, `active`,
+   drafted): fix whatever compile errors turn up, add real WiFi credentials
+   to `firmware/include/secrets.h`, and test `POST /sensor` against the
+   real board (e.g. with `curl`).
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before

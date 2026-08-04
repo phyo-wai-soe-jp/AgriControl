@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T06:00:00+09:00",
+  "updated_at": "2026-08-04T07:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -84,12 +84,22 @@
     {
       "id": "agent-04-firmware-runtime",
       "role": "ESP runtime agent",
-      "model": "Unassigned",
-      "status": "waiting",
-      "current_work": "Prepare non-blocking ESP runtime, shared state, events, stale-data detection, recovery, HTTP, and validation limits.",
-      "done_work": [],
-      "next_work": "Wait for hardware facts and pure logic contracts, then implement Stage 4 and Stage 5 firmware slices.",
+      "model": "Claude Sonnet 5",
+      "status": "needs_owner",
+      "current_work": "Drafted the Stage 4 ESP runtime (async loop, shared state, event log, stale-data detection, recovery, HTTP server, request-size/validation limits) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access in this environment.",
+      "done_work": [
+        "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h -- SensorState, SystemState (with the same Mode transition graph as logic/system_state.py), RecoveryTracker, and a fixed-capacity EventLog.",
+        "Added firmware/src/runtime.cpp (env:runtime): WiFi connect, a WebServer on port 80 with POST /sensor, request-size limit, JSON parse validation, sequence monotonicity check, and unknown-field rejection. Does not yet call a decision engine or drive actuators (Stage 5).",
+        "Added firmware/include/secrets.h.example as a WiFi-credential template (gitignored secrets.h, never committed).",
+        "Advanced branch 5 (ESP communication) to drafted and branch 12 (Observability) to implemented to reflect the new source."
+      ],
+      "next_work": "Owner: create firmware/include/secrets.h with real WiFi credentials; build/upload env:runtime (pio run -e runtime -t upload); send a test POST to /sensor (e.g. with curl) and report the response/serial log; confirm or adjust the placeholder tuning constants (10s stale timeout, 5-message recovery threshold, 2048-byte request cap).",
       "needs_owner": true,
+      "owner_questions": [
+        "Real WiFi SSID/password for firmware/include/secrets.h.",
+        "Are the placeholder runtime constants (stale-data timeout, recovery threshold, max request body size) acceptable, or do they need different values?",
+        "Once env:runtime builds: what curl command and response would you like recorded as the task 29/30 evidence?"
+      ],
       "blueprint_scope": ["Stage 4", "Stage 5", "Branches 5, 7, 12, 13"]
     },
     {

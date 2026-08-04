@@ -1,4 +1,4 @@
-# Firmware (Stage 3 - Local physical outputs)
+# Firmware (Stage 3 - Local physical outputs; Stage 4 - ESP runtime)
 
 PlatformIO / Arduino C++ project for the confirmed board: **ESP32-C3M-TRY**
 (MicroFan), module **ESP32-C3-MINI-1** (RISC-V, 4MB flash). Board facts and
@@ -27,8 +27,13 @@ pio run -e test_neopixel -t upload    # roadmap task 18
 pio run -e test_buzzer -t upload      # roadmap task 19
 pio run -e test_servo -t upload       # roadmap task 20
 pio run -e test_all_outputs -t upload # roadmap task 21 (run after 17-19)
+pio run -e runtime -t upload          # roadmap tasks 24-30 (needs secrets.h)
 pio device monitor                    # serial output, 115200 baud
 ```
+
+`env:runtime` needs WiFi credentials: copy `include/secrets.h.example` to
+`include/secrets.h` and fill in real values. `secrets.h` is gitignored and
+must never be committed.
 
 ## Pin map (manual Table 5.2)
 
@@ -69,6 +74,26 @@ pio device monitor                    # serial output, 115200 baud
   buzzer on one build to check they don't interfere with each other over the
   shared I2C bus / power rail. Run only after 17-19 have individual
   hardware evidence. The servo is intentionally left out (see file header).
+- `include/canonical.h` - `SensorId`, `SensorReading`, `SensorState` (Stage 4
+  task 25, Branch 6/7). Mirrors `logic/canonical.py`'s model so host tests
+  (Stage 2) and device firmware share the same shape.
+- `include/system_state.h` - `Mode`/`CommunicationState` enums with an
+  explicit transition graph (Stage 4 tasks 24/28), matching
+  `logic/system_state.py` exactly, plus `RecoveryTracker` implementing the
+  blueprint's recovery chain (Failure -> Safe state -> consecutive valid
+  messages -> stable communication -> resume automatic).
+- `include/events.h` - fixed-capacity ring-buffer event log (Stage 4 task
+  26, Branch 12). No dynamic growth.
+- `include/shared_state.h` - bundles sensors/system/recovery/events into one
+  `SharedState`, with a non-blocking `tick()` that detects staleness (task
+  27) and drives recovery (task 28).
+- `include/secrets.h.example` - WiFi credential template; copy to
+  `include/secrets.h` (gitignored) before building `env:runtime`.
+- `src/runtime.cpp` - Stage 4 tasks 24/29/30: a `WebServer` on port 80
+  accepting `POST /sensor`, with generic request-size and JSON/sequence
+  validation (task 30). Does **not** call a decision engine or drive any
+  actuator -- that wiring, plus sensor-specific range validation, is
+  Stage 5 (roadmap tasks 31-40).
 
 ## Resolved this session
 
@@ -89,3 +114,9 @@ generic eval board, not the AgriControl greenhouse build:
 3. Exact PlatformIO platform/framework/core versions in use (e.g.
    `platform-espressif32` version, Arduino-ESP32 core version) - useful to
    pin in `platformio.ini` once confirmed, for reproducible builds.
+4. Real WiFi credentials for `include/secrets.h` (network name/password for
+   the board to join).
+5. Whether the placeholder tuning constants in `include/system_state.h`
+   (`kDataStaleTimeoutMs = 10000`, `kRecoveryConsecutiveValidRequired = 5`)
+   and `src/runtime.cpp` (`kMaxRequestBodyBytes = 2048`) are acceptable, or
+   need different values for the real deployment.

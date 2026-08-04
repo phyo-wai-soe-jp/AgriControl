@@ -24,11 +24,11 @@
     }
   },
   "metrics": {
-    "overall_percent": 27,
-    "roadmap_percent": 24,
-    "branch_percent": 37,
+    "overall_percent": 29,
+    "roadmap_percent": 28,
+    "branch_percent": 41,
     "gate_percent": 0,
-    "control_loop_percent": 45
+    "control_loop_percent": 48
   },
   "stages": [
     { "id": 1, "name": "Foundations", "intent": "Board, wiring, use case, safe states, protocol, and acceptance tests." },
@@ -68,13 +68,13 @@
     { "id": 21, "stage": 3, "status": "active", "title": "Test all outputs together." },
     { "id": 22, "stage": 3, "status": "todo", "title": "Connect hardcoded decisions to outputs." },
     { "id": 23, "stage": 3, "status": "done", "title": "Confirm servo power does not reset the ESP." },
-    { "id": 24, "stage": 4, "status": "todo", "title": "Build the asynchronous runtime." },
-    { "id": 25, "stage": 4, "status": "todo", "title": "Add shared state management." },
-    { "id": 26, "stage": 4, "status": "todo", "title": "Add the event system." },
-    { "id": 27, "stage": 4, "status": "todo", "title": "Add stale-data detection." },
-    { "id": 28, "stage": 4, "status": "todo", "title": "Add recovery logic." },
-    { "id": 29, "stage": 4, "status": "todo", "title": "Add the HTTP server." },
-    { "id": 30, "stage": 4, "status": "todo", "title": "Add request-size and validation limits." },
+    { "id": 24, "stage": 4, "status": "active", "title": "Build the asynchronous runtime." },
+    { "id": 25, "stage": 4, "status": "active", "title": "Add shared state management." },
+    { "id": 26, "stage": 4, "status": "active", "title": "Add the event system." },
+    { "id": 27, "stage": 4, "status": "active", "title": "Add stale-data detection." },
+    { "id": 28, "stage": 4, "status": "active", "title": "Add recovery logic." },
+    { "id": 29, "stage": 4, "status": "active", "title": "Add the HTTP server." },
+    { "id": 30, "stage": 4, "status": "active", "title": "Add request-size and validation limits." },
     { "id": 31, "stage": 5, "status": "todo", "title": "Implement only virtual temperature." },
     { "id": 32, "stage": 5, "status": "todo", "title": "Send temperature with curl." },
     { "id": 33, "stage": 5, "status": "todo", "title": "Validate the message." },
@@ -133,14 +133,14 @@
     { "id": 2, "status": "planned", "name": "Website simulation", "purpose": "Virtual conditions, scenarios, faults, dashboards." },
     { "id": 3, "status": "planned", "name": "FastAPI bridge", "purpose": "Browser-to-ESP communication, sessions, logs, replay, tests." },
     { "id": 4, "status": "drafted", "name": "Protocol", "purpose": "Stable messages and validation rules." },
-    { "id": 5, "status": "planned", "name": "ESP communication", "purpose": "Move data without deciding behavior." },
+    { "id": 5, "status": "drafted", "name": "ESP communication", "purpose": "Move data without deciding behavior." },
     { "id": 6, "status": "implemented", "name": "Sensor abstraction", "purpose": "Virtual and physical inputs become canonical state." },
     { "id": 7, "status": "implemented", "name": "State management", "purpose": "Authoritative sensor, system, and actuator state." },
     { "id": 8, "status": "implemented", "name": "Decision engine", "purpose": "Normal requested actions with reasons and rule IDs." },
     { "id": 9, "status": "implemented", "name": "Safety supervisor", "purpose": "Final authority and conflict resolution." },
     { "id": 10, "status": "implemented", "name": "Actuator abstraction", "purpose": "Requested, commanded, simulated, measured, and fault states." },
     { "id": 11, "status": "drafted", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
-    { "id": 12, "status": "drafted", "name": "Observability", "purpose": "Meaningful events and state changes." },
+    { "id": 12, "status": "implemented", "name": "Observability", "purpose": "Meaningful events and state changes." },
     { "id": 13, "status": "drafted", "name": "Testing", "purpose": "Logic, integration, failure, endurance, and replay verification." },
     { "id": 14, "status": "planned", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
     { "id": 15, "status": "planned", "name": "Physical expansion", "purpose": "Gradual replacement of virtual components." },
@@ -218,10 +218,12 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22],
+  "next_tasks": [17, 18, 19, 21, 22, 24, 25, 26, 27, 28, 29, 30],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",
-    "Exact PlatformIO platform/framework/Arduino-ESP32 core versions in use"
+    "Exact PlatformIO platform/framework/Arduino-ESP32 core versions in use",
+    "Real WiFi credentials for firmware/include/secrets.h",
+    "Whether the placeholder runtime tuning constants (stale-data timeout, recovery threshold, max request body size) are acceptable for the real deployment"
   ]
 }
