@@ -95,7 +95,12 @@ When continuing this project:
 
 For dashboard-only changes, at minimum:
 
-- Parse the inline script in `web-build/index.html`.
+- Parse the inline script in `web-build/index.html` (syntax only -- does not
+  catch runtime declaration-order bugs; see `docs/AI_CONTINUITY_SYSTEM.md`
+  Public Reporting Checklist item 1).
+- If task/branch/gate statuses changed, confirm `BASELINE_VERSION` in
+  `web-build/index.html` matches `data/progress-baseline.json`'s
+  `updated_at` exactly.
 - Verify the public page returns HTTP 200 after deployment.
 - Verify the hosted blueprint PDF, progress JSON, and prompt library return HTTP
   200.

@@ -151,7 +151,21 @@ Next task:
 
 When the dashboard or public handoff files change:
 
-1. Validate `web-build/index.html` script syntax.
+1. Validate `web-build/index.html` script syntax
+   (`node --check` on the extracted `<script>` body is a syntax check only
+   -- it will NOT catch runtime ordering bugs. If you change top-level
+   `const`/`let` declaration order, functionally test `loadState()` with a
+   real DOM, e.g. jsdom, the way the localStorage-staleness fix was
+   verified).
+1a. If `data/progress-baseline.json`'s `tasks`, `branches`, or `gates`
+   changed, bump `BASELINE_VERSION` near the top of `web-build/index.html`'s
+   script to exactly match `data/progress-baseline.json`'s top-level
+   `updated_at`. These two values must always match -- `BASELINE_VERSION` is
+   what lets the dashboard detect and refuse to silently show stale
+   browser-saved edits instead of current project data. Verify with:
+   `grep -o 'BASELINE_VERSION = "[^"]*"' web-build/index.html` and
+   `grep updated_at data/progress-baseline.json` -- the timestamps must be
+   identical.
 2. Ensure these public files exist:
    - `web-build/index.html`
    - `web-build/ESP32_Virtual_Control_Lab_Blueprint.pdf`

@@ -287,6 +287,33 @@
       padding: 18px;
     }
 
+    .stale-banner {
+      display: none;
+      background: #fff7e8;
+      border: 1px solid var(--amber);
+      border-left-width: 5px;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+    }
+
+    .stale-banner.visible {
+      display: block;
+    }
+
+    .stale-banner strong {
+      color: var(--amber);
+    }
+
+    .stale-banner p {
+      margin: 6px 0 12px;
+      color: var(--ink);
+    }
+
+    .stale-banner .btn {
+      margin-right: 8px;
+    }
+
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1180,6 +1207,12 @@
       </aside>
 
       <div class="content">
+        <div class="stale-banner" id="staleEditsBanner">
+          <strong>Showing current project data, not your last saved view.</strong>
+          <p id="staleEditsMessage"></p>
+          <button class="btn" id="restoreStaleBtn" type="button">Restore my saved view anyway</button>
+          <button class="btn danger" id="discardStaleBtn" type="button">Discard saved view</button>
+        </div>
         <section class="section" id="overview">
           <div class="section-head">
             <div>
@@ -1880,7 +1913,15 @@
       }
     ];
 
+    // Bump this whenever data/progress-baseline.json's tasks/branches/gates
+    // change, keeping it identical to that file's top-level "updated_at".
+    // loadState() uses it to detect and refuse to silently apply local
+    // browser edits saved against an older version of this data -- see
+    // docs/PROJECT_STATE.md for the incident this was added to prevent.
+    const BASELINE_VERSION = "2026-08-04T08:00:00+09:00";
+
     const baseline = {
+      version: BASELINE_VERSION,
       tasks: {
         "1": "done",
         "2": "done",
@@ -1938,10 +1979,17 @@
     }
 
     const STORAGE_KEY = "agricontrol-taskmanagement-v1";
+    const STALE_STORAGE_KEY = STORAGE_KEY + ":stale";
+    // Set by loadState() when it finds local edits saved against an older
+    // BASELINE_VERSION. Read by renderStaleBanner() to warn instead of
+    // silently showing a blend of old and new data.
+    let staleEditsInfo = null;
     let state = loadState();
     let activeFilter = "all";
 
     const elements = {
+      staleEditsBanner: document.getElementById("staleEditsBanner"),
+      staleEditsMessage: document.getElementById("staleEditsMessage"),
       overallRing: document.getElementById("overallRing"),
       overallPercent: document.getElementById("overallPercent"),
       navOverview: document.getElementById("navOverview"),
@@ -1991,28 +2039,43 @@
       }));
     }
 
+    function buildMergedState(stored) {
+      return {
+        tasks: { ...baseline.tasks, ...stored.tasks },
+        branches: { ...baseline.branches, ...stored.branches },
+        gates: { ...baseline.gates, ...stored.gates },
+        notes: stored.notes || baseline.notes,
+        communication: {
+          ...clone(defaultCommunication),
+          ...(stored.communication || {}),
+          filters: {
+            ...defaultCommunication.filters,
+            ...((stored.communication && stored.communication.filters) || {})
+          },
+          answers: {
+            ...((stored.communication && stored.communication.answers) || {})
+          }
+        },
+        agents: mergeAgentState(stored.agents),
+        version: BASELINE_VERSION
+      };
+    }
+
     function loadState() {
       try {
         const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
         if (stored && stored.tasks && stored.branches && stored.gates) {
-          return {
-            tasks: { ...baseline.tasks, ...stored.tasks },
-            branches: { ...baseline.branches, ...stored.branches },
-            gates: { ...baseline.gates, ...stored.gates },
-            notes: stored.notes || baseline.notes,
-            communication: {
-              ...clone(defaultCommunication),
-              ...(stored.communication || {}),
-              filters: {
-                ...defaultCommunication.filters,
-                ...((stored.communication && stored.communication.filters) || {})
-              },
-              answers: {
-                ...((stored.communication && stored.communication.answers) || {})
-              }
-            },
-            agents: mergeAgentState(stored.agents)
-          };
+          if (stored.version === BASELINE_VERSION) {
+            return buildMergedState(stored);
+          }
+          // The project data has moved on since these local edits were
+          // saved (or they predate BASELINE_VERSION entirely). Do not
+          // silently blend stale statuses into what's displayed -- stash
+          // them so they aren't lost, show the current baseline instead,
+          // and let renderStaleBanner() tell the user what happened.
+          localStorage.setItem(STALE_STORAGE_KEY, JSON.stringify(stored));
+          localStorage.removeItem(STORAGE_KEY);
+          staleEditsInfo = { savedVersion: stored.version || "an earlier version of this page" };
         }
       } catch (error) {
         console.warn("Could not load saved progress", error);
@@ -2021,6 +2084,7 @@
     }
 
     function saveState() {
+      state.version = BASELINE_VERSION;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
@@ -2242,7 +2306,25 @@
       elements.loopDetail.textContent = `${loop.covered} covered, ${loop.partial} partially covered, ${loop.total} total steps`;
       setBar(elements.loopBar, loop.value);
 
-      elements.updatedAt.textContent = `Updated ${new Date().toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
+      const dataDate = new Date(BASELINE_VERSION);
+      elements.updatedAt.textContent = Number.isNaN(dataDate.getTime())
+        ? "Data version unknown"
+        : `Data as of ${dataDate.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`;
+      elements.updatedAt.title = staleEditsInfo
+        ? "Your saved local edits are stashed and not shown -- see the notice above."
+        : "Matches the current project baseline.";
+    }
+
+    function renderStaleBanner() {
+      if (!staleEditsInfo) {
+        elements.staleEditsBanner.classList.remove("visible");
+        return;
+      }
+      elements.staleEditsBanner.classList.add("visible");
+      elements.staleEditsMessage.textContent =
+        `Your browser had local dashboard edits saved against an older version of this page ` +
+        `(${staleEditsInfo.savedVersion}). The project data has been updated since then, so those edits were ` +
+        `not applied -- every number on this page is the current baseline. Your saved edits are kept, not lost.`;
     }
 
     function renderStages() {
@@ -2674,6 +2756,7 @@
     }
 
     function renderAll() {
+      renderStaleBanner();
       renderOverview();
       renderStages();
       renderTasks();
@@ -2841,6 +2924,31 @@
 
     document.getElementById("exportBtn").addEventListener("click", exportProgress);
     document.getElementById("printBtn").addEventListener("click", () => window.print());
+    document.getElementById("restoreStaleBtn").addEventListener("click", () => {
+      const raw = localStorage.getItem(STALE_STORAGE_KEY);
+      if (!raw) {
+        staleEditsInfo = null;
+        renderAll();
+        return;
+      }
+      try {
+        const stored = JSON.parse(raw);
+        state = buildMergedState(stored);
+        localStorage.removeItem(STALE_STORAGE_KEY);
+        staleEditsInfo = null;
+        saveState();
+        elements.notes.value = state.notes;
+        elements.ownerReply.value = state.communication.ownerReply;
+        renderAll();
+      } catch (error) {
+        console.warn("Could not restore saved progress", error);
+      }
+    });
+    document.getElementById("discardStaleBtn").addEventListener("click", () => {
+      localStorage.removeItem(STALE_STORAGE_KEY);
+      staleEditsInfo = null;
+      renderAll();
+    });
     document.getElementById("resetBtn").addEventListener("click", () => {
       const confirmed = window.confirm("Reset local dashboard progress to the blueprint baseline?");
       if (!confirmed) return;

@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (system recheck: branch 12 corrected)
+Last updated: 2026-08-04 JST (fixed dashboard staleness bug)
 
 ## Live Links
 
@@ -62,6 +62,78 @@ These numbers come from the blueprint-derived model in
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (dashboard staleness bug fixed)
+
+Agent: agent-01-coordinator (Claude Sonnet 5).
+
+Root-caused and fixed the exact bug behind an owner-reported discrepancy:
+the live dashboard showed materially different numbers (22% overall,
+12/82 tasks, "1 implemented, 9 drafted" branches) than the deployed
+`data/progress-baseline.json` (29% overall, 18/82, "5 implemented, 5
+drafted"). Diffing the deployed file against the repo and against the
+dashboard's own live-computed math showed both matched each other and the
+repo exactly -- the discrepancy could only be explained by the dashboard's
+`localStorage` overlay (`agricontrol-taskmanagement-v1`) silently taking
+priority over the baseline, per `loadState()`'s existing
+`{...baseline.tasks, ...stored.tasks}` merge. Nothing in the numbers the
+owner saw corresponded to any baseline snapshot this repo ever had, which
+means it was local browser state (likely from manual UI edits at some
+earlier point), not a stale deploy.
+
+Changed:
+
+- Added `BASELINE_VERSION` (a timestamp, kept identical to
+  `data/progress-baseline.json`'s `updated_at`) to `web-build/index.html`,
+  stamped into `baseline.version` and into everything `saveState()` writes.
+- Rewrote `loadState()`: local edits are only merged in when
+  `stored.version === BASELINE_VERSION`. On a mismatch (including saves
+  from before this fix existed, which have no `version` field at all), the
+  stale blob is moved to a separate `:stale` localStorage key -- not lost,
+  not silently applied -- and the page falls back to the current baseline.
+- Added a visible banner (`#staleEditsBanner`) that appears whenever stale
+  edits were found, explaining what happened, with two buttons:
+  "Restore my saved view anyway" (applies the stashed edits on purpose,
+  now an explicit choice instead of a silent default) and "Discard saved
+  view".
+- Fixed a second, smaller bug found while touching this code: the
+  "Updated \<badge\>" in the header showed `new Date()` (page render time,
+  which is always "now" and therefore meaningless as a freshness signal),
+  not when the underlying data was actually last updated. It now shows
+  `BASELINE_VERSION` formatted, with a tooltip noting when stale edits are
+  stashed.
+- Updated `docs/AI_CONTINUITY_SYSTEM.md`'s Public Reporting Checklist and
+  `AGENTS.md`'s Validation Baseline: `BASELINE_VERSION` must be bumped to
+  match `data/progress-baseline.json`'s `updated_at` every time tasks,
+  branches, or gates change, and `data/progress-baseline.json`'s
+  `updated_at` (which had silently stayed at the initial commit's
+  timestamp through every prior session's edits) must be bumped too.
+
+Evidence:
+
+- Wrote a jsdom-based functional test (not just `node --check` syntax
+  validation) covering 5 scenarios: fresh load with no saved state; a
+  version-mismatched saved state (confirms the banner shows, the stale
+  values are NOT applied, and the stale blob is preserved separately);
+  clicking "Restore" (confirms the stashed edits then do get applied,
+  intentionally); clicking "Discard" (confirms the stash is cleared); and a
+  version-matched saved state (confirms same-version local edits still
+  merge normally -- the existing editing feature isn't broken by this fix).
+  All 5 passed after one round of fixes.
+- The first draft of this fix had a real bug the functional test caught
+  that `node --check` did not: `STALE_STORAGE_KEY` was declared with
+  `const` textually after the point where `loadState()` first runs at
+  script top-level, producing a temporal-dead-zone `ReferenceError` on
+  every page load. Fixed by moving the declaration next to `STORAGE_KEY`,
+  before `let state = loadState();` executes.
+
+Status updates: none (this is a client-side dashboard bug fix, not a
+roadmap task).
+
+Next task: none required, but a good habit check -- before trusting
+dashboard numbers again after a browser has had the page open across
+multiple deploys, do a hard reload and check the "Data as of" badge in the
+header against `data/progress-baseline.json`'s `updated_at`.
 
 Date: 2026-08-04 JST (system recheck)
 
