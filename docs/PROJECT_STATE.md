@@ -71,6 +71,102 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (Stage 9 closed-loop simulation, host/tested)
+
+Agent: agent-03-logic (Claude Sonnet 5).
+
+Continuing in roadmap order after Stage 8: Stage 9 ("Closed-loop
+simulation") targets Branches 2, 9, 10, 12, 13. Its core hazard, stated
+directly in `docs/PROMPT_TEST_LIBRARY.md`: "Commanded state is not
+measured state. Fault evidence must be explicit. Feedback faults must
+influence safety or recovery behavior." All of that is pure logic --
+no real board needed to prove it -- so like Stage 2/6/7/8 it could be
+built and genuinely executed here.
+
+Changed:
+
+- Added `logic/actuator_feedback.py` (roadmap tasks 61-65): populates the
+  `simulated_state`/`fault_state` fields `logic/actuator_state.py` already
+  defines but nothing filled in yet.
+  - `simulate_binary_actuator()` models fan/pump feedback: normal
+    operation reports the commanded ON state only after a startup delay
+    (task 62, not instant like a real relay); `FAILED_STARTUP` never
+    reaches ON and faults (task 63); `STUCK_ON`/`STUCK_OFF` report a fixed
+    state regardless of command, faulting only once that fixed state
+    actually disagrees with what was commanded (task 64) -- a stuck-on
+    relay looks fine right up until you try to turn it off.
+  - `simulate_servo_actuator()` models the window servo: `WRONG_POSITION`
+    reports an offset angle standing in for mechanical slip/binding (task
+    65), clamped to the servo's 0-180 range.
+  - `detect_mismatch()` is the general task-61 check: an explicit fault
+    code from the source wins; otherwise any commanded/measured
+    disagreement is itself a fault -- never silently assumed equal.
+  - `to_actuator_state()` builds an `ActuatorState` record populating only
+    `simulated_state`, leaving `measured_state` as `None` -- there is no
+    real sensor yet (that's Stage 11: physical migration), and
+    `actuator_state.py`'s own docstring is explicit the two must stay
+    distinct.
+- Roadmap task 66 ("make the ESP respond to feedback faults"): rather than
+  modifying the already-verified `logic/safety.py` to add a new priority
+  tier, a detected fault code is passed into `evaluate_safety()`'s
+  existing `controller_fault` input. The proven SAFETY-tier response
+  (safe state, critical alarm) applies unchanged; the specific fault code
+  stays available separately as explicit evidence (task 66's "fault
+  evidence must be explicit" hazard), not hidden inside a boolean.
+  `safety.py` itself was not touched.
+- Added `tests/test_actuator_feedback.py`: 20 new tests covering startup
+  delay timing, failed-startup, stuck-on/off (both the "looks fine" and
+  "faults on disagreement" cases), wrong-position clamping, mismatch
+  detection (including the "no explicit fault code but states disagree
+  anyway" case), `ActuatorState` evidence shape, and three end-to-end
+  tests proving a detected actuator fault actually forces
+  `evaluate_safety()` into the SAFETY tier with a critical alarm.
+- **Not** ported to `firmware/`: unlike Stage 2's decision/safety logic,
+  this is a fault-*simulation* capability, and porting it to the real ESP
+  would require assuming feedback-sensor hardware (current-sense
+  resistors, limit switches, etc.) that hasn't been confirmed for this
+  board -- same caution already applied to the missing pump/fan pins.
+  Flagged as an open owner question below rather than guessed.
+
+Evidence:
+
+- `python3 -m unittest discover -s tests` -> 55 passed (up from 35).
+- `python3 -m pytest backend/tests/` -> 24 passed, unaffected (this
+  session didn't touch `backend/`).
+- Recomputed `data/progress-baseline.json`'s metrics by hand with the same
+  formula as `web-build/index.html`, then confirmed the dashboard's own
+  live jsdom rendering produces identical numbers before committing.
+
+Status updates:
+
+- Roadmap tasks 61-66 marked `done` -- real executed, passing host tests,
+  same bar as every other pure-logic stage.
+- No branch status changes: branches 2, 9, 10, 12, 13 were already
+  `implemented` from prior sessions; this doesn't newly cross a threshold
+  for any of them, and there's no established criterion yet for the
+  `verified` tier beyond branch 1's example.
+- `data/progress-baseline.json` metrics: overall 42% -> 44%, roadmap 54%
+  -> 61% (35/82 -> 41/82 tasks done), branches/control-loop unchanged (no
+  branch status crossed a threshold this round). `updated_at` bumped to
+  `2026-08-04T16:00:00+09:00`; `web-build/index.html`'s `BASELINE_VERSION`
+  bumped to match.
+
+Blockers / open questions (tracked in `data/agent-coordination.json`):
+
+1. Real actuator feedback hardware (current-sense resistors, limit
+   switches, or similar) is not confirmed for this board -- without it,
+   task 66's firmware-side implementation can't be built without
+   guessing, so it stays logic-only for now.
+2. Everything already open from Stage 4/5/7 (WiFi credentials, ESP IP,
+   pump/fan pins, emergency-stop switch) still applies.
+
+Next task: Stage 10 ("Reliability") tasks 67-69/71 (recording and replay,
+rule versioning, long-duration tests, documenting known limits) look
+partially software-reachable via the backend/simulator pairing, similar to
+Stage 8/9. Task 70 (watchdog) is explicitly gated on runtime stability in
+the blueprint's own wording, so it should wait. Tasks 17-19/21/22/24-40/48/
+56/57 remain blocked on real board access, unchanged.
+
 Date: 2026-08-04 JST (Stage 8 scenario testing, backend/tested)
 
 Agent: agent-05-backend (Claude Sonnet 5).

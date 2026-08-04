@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-04T14:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-04T16:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1977,7 +1977,13 @@
         "57": "active",
         "58": "done",
         "59": "done",
-        "60": "done"
+        "60": "done",
+        "61": "done",
+        "62": "done",
+        "63": "done",
+        "64": "done",
+        "65": "done",
+        "66": "done"
       },
       branches: {
         "1": "verified",
@@ -1995,7 +2001,7 @@
         "13": "implemented"
       },
       gates: {},
-      notes: "Stage 7 irrigation slice added: soil moisture, tank level, rain, pump hysteresis, and low-tank protection, ported to firmware (env:irrigation_slice, unverified) and genuinely tested end-to-end in backend/ + simulator/ (17 passing pytest tests, 11 passing jsdom scenarios). Pump is reported, never physically driven -- no pump pin assigned. NeoPixel status color and buzzer alarm tone added to firmware but are unverified, physical-output-only code. Stage 8 scenario testing (tasks 58-60) added: 7 preset scenarios (normal, hot, dry-soil, low-tank, rain, invalid-data, communication-loss) run end-to-end through the FastAPI bridge against a fake ESP built on the real decision engine and safety supervisor, with automatic PASS/FAIL comparison against expected commands/mode/alarm/response-time (24 passing pytest tests total). Also ported a hardware-verified buzzer fix (LEDC PWM instead of tone()) from a separate, actively hardware-tested project on the same ESP32-C3M-TRY board. See docs/PROJECT_STATE.md.",
+      notes: "Stage 7 irrigation slice added: soil moisture, tank level, rain, pump hysteresis, and low-tank protection, ported to firmware (env:irrigation_slice, unverified) and genuinely tested end-to-end in backend/ + simulator/ (17 passing pytest tests, 11 passing jsdom scenarios). Pump is reported, never physically driven -- no pump pin assigned. NeoPixel status color and buzzer alarm tone added to firmware but are unverified, physical-output-only code. Stage 8 scenario testing (tasks 58-60) added: 7 preset scenarios (normal, hot, dry-soil, low-tank, rain, invalid-data, communication-loss) run end-to-end through the FastAPI bridge against a fake ESP built on the real decision engine and safety supervisor, with automatic PASS/FAIL comparison against expected commands/mode/alarm/response-time (24 passing pytest tests total). Also ported a hardware-verified buzzer fix (LEDC PWM instead of tone()) from a separate, actively hardware-tested project on the same ESP32-C3M-TRY board. Stage 9 closed-loop simulation (tasks 61-66) added: logic/actuator_feedback.py simulates fan/pump/servo feedback with injectable faults (startup delay, failed startup, stuck-on/off, wrong servo position) and detects commanded-vs-measured mismatches, feeding a detected fault into the existing safety supervisor's controller_fault input to force a safe state and critical alarm -- 20 new passing host tests (55 total). Not ported to firmware/ yet: real fault detection needs feedback sensor hardware (current-sense, limit switches) this board doesn't have confirmed wiring for. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };
