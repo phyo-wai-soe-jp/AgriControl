@@ -65,7 +65,7 @@
     { "id": 18, "stage": 3, "status": "active", "title": "Test NeoPixel independently." },
     { "id": 19, "stage": 3, "status": "active", "title": "Test buzzer independently." },
     { "id": 20, "stage": 3, "status": "done", "title": "Test servo independently." },
-    { "id": 21, "stage": 3, "status": "todo", "title": "Test all outputs together." },
+    { "id": 21, "stage": 3, "status": "active", "title": "Test all outputs together." },
     { "id": 22, "stage": 3, "status": "todo", "title": "Connect hardcoded decisions to outputs." },
     { "id": 23, "stage": 3, "status": "done", "title": "Confirm servo power does not reset the ESP." },
     { "id": 24, "stage": 4, "status": "todo", "title": "Build the asynchronous runtime." },

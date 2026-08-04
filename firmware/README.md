@@ -26,6 +26,7 @@ pio run -e test_oled -t upload        # roadmap task 17
 pio run -e test_neopixel -t upload    # roadmap task 18
 pio run -e test_buzzer -t upload      # roadmap task 19
 pio run -e test_servo -t upload       # roadmap task 20
+pio run -e test_all_outputs -t upload # roadmap task 21 (run after 17-19)
 pio device monitor                    # serial output, 115200 baud
 ```
 
@@ -64,6 +65,10 @@ pio device monitor                    # serial output, 115200 baud
   RC servo header to the three greenhouse window angles used by
   `logic/decision.py` (`WINDOW_CLOSED_DEG=10`, `WINDOW_HALF_DEG=90`,
   `WINDOW_OPEN_DEG=170`).
+- `src/test_all_outputs.cpp` - Stage 3 task 21. Combines OLED, NeoPixel, and
+  buzzer on one build to check they don't interfere with each other over the
+  shared I2C bus / power rail. Run only after 17-19 have individual
+  hardware evidence. The servo is intentionally left out (see file header).
 
 ## Resolved this session
 

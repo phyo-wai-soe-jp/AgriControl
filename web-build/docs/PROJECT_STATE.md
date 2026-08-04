@@ -108,6 +108,12 @@ Changed:
   remove MicroPython-specific wording and reflect the PlatformIO decision;
   regenerated `docs/PROMPT_TEST_LIBRARY.md` and
   `data/prompt-test-library.json`.
+- Added `firmware/src/test_all_outputs.cpp` (`env:test_all_outputs`) for
+  roadmap task 21: combines OLED, NeoPixel, and buzzer on one build to check
+  for shared-bus/power interference. Deliberately excludes the servo, since
+  the hardware-verified servo power test did not include the other outputs
+  running at the same time. Meant to run only after tasks 17-19 have their
+  own individual hardware evidence.
 
 Evidence (this session):
 
@@ -123,6 +129,8 @@ Status updates (this session):
 - Roadmap tasks 20 and 23 marked `done` (servo motion observed; ESP did not
   reset).
 - Roadmap tasks 17-19 remain `active` (still unverified on hardware).
+- Roadmap task 21 marked `active`: combined-output test source drafted,
+  unverified on hardware, and gated behind 17-19 individually passing first.
 - `known_unknowns` updated: MicroPython version and generic servo-power
   unknowns removed; exact RC servo model, pump/fan pin assignment, and
   exact PlatformIO/Arduino-ESP32 core versions remain open.
@@ -139,8 +147,8 @@ under `agent-02-hardware`):
 
 Next task: build/upload `firmware/` test environments
 (`pio run -e test_oled|test_neopixel|test_buzzer -t upload`) on the physical
-board and report the results; answer the three blockers above before
-advancing Stage 3 further (tasks 21-22).
+board and report the results, then `env:test_all_outputs` (task 21); answer
+the three blockers above before advancing Stage 3 further (task 22).
 
 Older changes (previous session: Stage 1 hardware facts + Stage 3 firmware
 drafts, superseded above where noted -- the firmware was MicroPython at the
@@ -353,8 +361,8 @@ Follow the blueprint order. The next open tasks are:
 1. Build and upload `firmware/`'s `test_oled`, `test_neopixel`, and
    `test_buzzer` PlatformIO environments on the physical board and record
    the results as evidence (roadmap tasks 17-19, `active`).
-2. Test all outputs together (roadmap task 21) once 17-19 have hardware
-   evidence.
+2. Build and upload `env:test_all_outputs` (roadmap task 21, `active`,
+   drafted) once 17-19 have hardware evidence.
 3. Connect hardcoded decisions to outputs (roadmap task 22) - needs the
    owner to first answer the pump/fan pin question in
    `data/agent-coordination.json` (`agent-02-hardware`), since this board has
