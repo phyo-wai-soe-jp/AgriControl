@@ -98,17 +98,33 @@ pio device monitor                    # serial output, 115200 baud
 - `include/decision.h` - Stage 5 task 34: temperature-only decision rules,
   matching `logic/decision.py` exactly (`<=28C` fan off/window closed,
   `28-35C` fan on/window half, `>35C` fan on/window fully open).
+- `include/safety.h` - firmware port of `logic/safety.py` (Stage 2 task 12),
+  restricted to the fan/window outputs this slice has. Same priority order
+  (Emergency > Safety > Equipment protection > Automatic) and safe-state
+  matrix as the Python version. `vertical_slice.cpp` always routes the
+  decision engine's output through this before touching the servo.
 - `src/vertical_slice.cpp` (`env:vertical_slice`) - Stage 5 tasks
-  31/33/34/35/36/37: temperature range validation, the decision engine,
-  servo output, OLED display, and a full JSON response with commands and
-  reasons. **No safety supervisor is wired in** -- read the file header
-  before using this beyond a bench test. Soil moisture, tank level, and
-  rain are Stage 7, not this slice.
+  31/33/34/35/36/37: temperature range validation, the decision engine, the
+  safety supervisor, servo output, OLED display, and a full JSON response
+  with commands, alarm level, and reasons. Soil moisture, tank level, and
+  rain are Stage 7, not this slice, so low-tank pump protection has no pump
+  to protect yet. Two safety inputs are still hardcoded placeholders, not
+  real hardware signals -- read the file header before using this beyond a
+  bench test:
+  - `kEmergencyStopActive` -- no physical emergency-stop input assigned yet.
+  - `kControllerFaultActive` -- no self-health-check exists yet to set it.
+  `dataStale` and `isStartup` are real, driven by `SharedState::tick()` and
+  by whether any message has ever been accepted.
 
 ## Resolved this session
 
 - Servo power stability (roadmap task 23): confirmed by direct hardware
   observation that repeatedly cycling the servo does not reset the ESP.
+- The safety supervisor is now wired into `vertical_slice.cpp` -- it is no
+  longer true that decisions reach the servo unchecked. The remaining gap
+  is narrower: two of the safety supervisor's *inputs* (emergency stop,
+  controller fault) are still placeholders, not that the supervisor itself
+  is missing.
 
 ## Open owner questions
 
@@ -129,9 +145,9 @@ generic eval board, not the AgriControl greenhouse build:
 5. Whether the placeholder tuning constants in `include/system_state.h`
    (`kDataStaleTimeoutMs = 10000`, `kRecoveryConsecutiveValidRequired = 5`)
    and `src/runtime.cpp`/`src/vertical_slice.cpp`
-   (`kMaxRequestBodyBytes = 2048`) are acceptable, or need different values
-   for the real deployment.
-6. `src/vertical_slice.cpp` has no safety supervisor -- `logic/safety.py`
-   has not been ported to firmware. Porting it (own future task, not yet on
-   the roadmap as a numbered item) should happen before this drives
-   anything beyond a bench test.
+   (`kMaxRequestBodyBytes = 2048`, `-40C` to `85C` temperature range) are
+   acceptable, or need different values for the real deployment.
+6. Should one of the spare tact switches (SW1/SW2/SW3) be wired as a
+   physical emergency-stop input for `kEmergencyStopActive` in
+   `src/vertical_slice.cpp`? Currently hardcoded `false` -- no switch is
+   assigned. Do not guess which switch; ask first.

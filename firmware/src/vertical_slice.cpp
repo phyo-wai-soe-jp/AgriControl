@@ -2,20 +2,24 @@
 // temperature only (env:vertical_slice).
 //
 // Builds on the Stage 4 runtime (env:runtime, src/runtime.cpp) by adding
-// temperature-range validation, the decision engine, servo output, OLED
-// display, and a full JSON response with commands and reasons.
+// temperature-range validation, the decision engine, the safety
+// supervisor, servo output, OLED display, and a full JSON response.
 //
 // Deliberately narrow scope, matching roadmap task 31 ("Implement only
 // virtual temperature"): soil moisture, tank level, and rain are Stage 7,
-// not here.
+// not here -- so the safety supervisor's low-tank pump protection has
+// nothing to protect yet either (there is no pump command in this slice).
 //
-// IMPORTANT GAP: the safety supervisor (logic/safety.py) has not been
-// ported to firmware yet. This slice applies the decision engine's output
-// to the servo directly, with no override layer -- no low-tank pump
-// protection, no emergency stop, no fault/stale-data safe-state (tick()
-// still detects staleness and moves system.mode(), but nothing here reacts
-// to that by forcing a safe servo position). That must be closed before
-// this drives anything beyond a bench test.
+// REMAINING GAPS (safety supervisor is now wired in, but two of its
+// inputs are still placeholders, not real hardware signals):
+// - `emergencyStopActive` is hardcoded false. No physical emergency-stop
+//   input has been assigned. The board has spare tact switches (SW1-SW3)
+//   that could serve this purpose -- ask the owner before wiring one, do
+//   not guess which.
+// - `controllerFaultActive` is hardcoded false. No self-health-check
+//   (watchdog, sensor-read failure detection, etc.) exists yet to set it.
+// `dataStale` and `isStartup` ARE real, driven by SharedState::tick() and
+// by whether a message has ever been accepted, respectively.
 //
 // Build/upload with: pio run -e vertical_slice -t upload
 // Needs firmware/include/secrets.h (see runtime.cpp's header) and the
@@ -33,6 +37,7 @@
 
 #include "decision.h"
 #include "pins.h"
+#include "safety.h"
 #include "secrets.h"
 #include "shared_state.h"
 
@@ -47,6 +52,14 @@ constexpr size_t kMaxRequestBodyBytes = 2048;
 // the owner before relying on it.
 constexpr float kTemperatureMinC = -40.0f;
 constexpr float kTemperatureMaxC = 85.0f;
+
+// Safety supervisor inputs that are not yet real hardware signals -- see
+// the file header. Kept as named constants (not inline `false` literals)
+// so wiring a real GPIO/watchdog later is a one-line change here, not a
+// search-and-replace through handleSensorPost().
+constexpr bool kEmergencyStopActive = false;
+constexpr bool kControllerFaultActive = false;
+constexpr bool kConfiguredSafeFanState = false;
 
 WebServer server(80);
 SharedState shared;
@@ -68,17 +81,22 @@ void rejectAndLog(int code, const char* error, unsigned long nowMs, const String
   shared.recovery.recordFailure();
 }
 
-void showOnOled(float temperatureC, const TemperatureDecision& decision) {
+// Shows the final commanded values (after the safety supervisor), not the
+// raw decision -- what the OLED shows should match what the servo/fan
+// actually do.
+void showOnOled(float temperatureC, const TemperatureDecision& decision, const SafetyResult& safety) {
   oled.clearBuffer();
   oled.setFont(u8g2_font_6x10_tf);
   char line1[24];
   snprintf(line1, sizeof(line1), "TEMP: %.1f C", temperatureC);
   oled.drawStr(0, 12, line1);
-  oled.drawStr(0, 26, decision.requestedFan ? "FAN: ON" : "FAN: OFF");
+  oled.drawStr(0, 26, safety.commandedFan ? "FAN: ON" : "FAN: OFF");
   char line3[24];
-  snprintf(line3, sizeof(line3), "WINDOW: %d deg", decision.requestedWindowDeg);
+  snprintf(line3, sizeof(line3), "WINDOW: %d deg", safety.commandedWindowDeg);
   oled.drawStr(0, 40, line3);
-  oled.drawStr(0, 54, decision.triggeredRule);
+  char line4[32];
+  snprintf(line4, sizeof(line4), "%s [%s]", decision.triggeredRule, safety.alarmLevel);
+  oled.drawStr(0, 54, line4);
   oled.sendBuffer();
 }
 
@@ -132,6 +150,11 @@ void handleSensorPost() {
     return;
   }
 
+  // Startup means "no message has ever been accepted yet" -- evaluated
+  // before this message updates shared.haveSequence below, matching the
+  // blueprint's startup safe-state row.
+  bool isStartup = !shared.haveSequence;
+
   shared.sensors.update(SensorId::TEMPERATURE, temperatureC, nowMs);
   shared.lastSequence = static_cast<unsigned long>(sequence);
   shared.haveSequence = true;
@@ -139,28 +162,40 @@ void handleSensorPost() {
 
   TemperatureDecision decision = evaluateTemperatureDecision(temperatureC);
 
-  // Roadmap task 35: apply the servo command. No safety supervisor is
-  // wired in yet (see file header) -- this writes the decision engine's
-  // output directly, unmodified.
-  windowServo.write(decision.requestedWindowDeg);
+  bool dataStale = shared.system.communicationState() == CommunicationState::DATA_STALE;
+  SafetyResult safety = evaluateSafety(
+      decision, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup, kConfiguredSafeFanState);
+
+  // Roadmap task 35: apply the servo command -- the safety supervisor's
+  // commanded value, never the raw decision.
+  windowServo.write(safety.commandedWindowDeg);
 
   // Roadmap task 36: display the reason on OLED.
-  showOnOled(temperatureC, decision);
+  showOnOled(temperatureC, decision, safety);
 
   shared.events.push(nowMs, "DECISION", decision.reason);
+  if (safety.overrideCode != nullptr) {
+    shared.events.push(nowMs, "SAFETY_OVERRIDE", safety.overrideCode);
+  }
 
-  // Roadmap task 37: return the decision as JSON.
+  // Roadmap task 37: return the decision as JSON, reflecting what the
+  // safety supervisor actually commanded.
   JsonDocument response;
   response["accepted"] = true;
   response["sequence"] = sequence;
-  response["mode"] = "automatic";
+  response["mode"] = safety.appliedPriority == SafetyPriority::AUTOMATIC_OPERATION ? "automatic" : "safety_override";
+  response["alarm_level"] = safety.alarmLevel;
   JsonObject commands = response["commands"].to<JsonObject>();
-  commands["fan"] = decision.requestedFan;
-  commands["window_angle"] = decision.requestedWindowDeg;
+  commands["fan"] = safety.commandedFan;
+  commands["window_angle"] = safety.commandedWindowDeg;
   JsonArray triggeredRules = response["triggered_rules"].to<JsonArray>();
   triggeredRules.add(decision.triggeredRule);
   JsonArray reasons = response["reasons"].to<JsonArray>();
   reasons.add(decision.reason);
+  if (safety.overrideCode != nullptr) {
+    triggeredRules.add(safety.overrideCode);
+    reasons.add(String("Safety override: ") + safety.overrideCode);
+  }
   String responseBody;
   serializeJson(response, responseBody);
   server.send(200, "application/json", responseBody);

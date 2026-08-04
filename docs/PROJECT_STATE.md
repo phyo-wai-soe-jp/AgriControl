@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (Stage 5 first vertical slice drafted)
+Last updated: 2026-08-04 JST (safety supervisor ported to firmware)
 
 ## Live Links
 
@@ -63,6 +63,64 @@ These numbers come from the blueprint-derived model in
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (safety supervisor ported to firmware)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+The previous session's handoff flagged a real problem and left it as an
+open question rather than fixing it: `vertical_slice.cpp` applied the
+decision engine's output straight to the servo, with no safety override
+layer. The owner confirmed this should be fixed, so it was fixed this
+session, not just re-flagged.
+
+Changed:
+
+- Added `firmware/include/safety.h`: a firmware port of `logic/safety.py`
+  (Stage 2 roadmap task 12), restricted to the fan/window outputs the
+  temperature-only slice actually has (no pump exists yet -- that's Stage
+  7). Same priority order (Emergency > Safety > Equipment protection >
+  Automatic) and safe-state matrix as the Python version, including the
+  same "safe angle defaults to closed" and "configured safe fan state
+  defaults to off" documented assumptions.
+- Rewired `firmware/src/vertical_slice.cpp`: every `POST /sensor` message
+  now computes the decision, runs it through `evaluateSafety()`, and only
+  ever applies the **safety supervisor's** commanded value to the servo --
+  never the raw decision. The OLED display and JSON response
+  (`commands`, `mode`, `alarm_level`) were updated to reflect the same
+  post-safety values, so what's displayed always matches what's actually
+  commanded.
+- `isStartup` is computed for real (true until the first message is ever
+  accepted) and `dataStale` is computed for real (from
+  `SharedState::tick()`'s existing staleness detection) -- both feed
+  `evaluateSafety()`.
+- `emergencyStopActive` and `controllerFaultActive` remain hardcoded
+  `false`. This is now honestly narrower than before: the safety
+  supervisor itself is real and wired in; what's still missing is two of
+  its *input signals*, because no physical emergency-stop switch has been
+  assigned and no controller-health-check exists yet. Named as constants
+  (`kEmergencyStopActive`, `kControllerFaultActive`) specifically so wiring
+  them for real later is a one-line change, not a rewrite.
+
+Evidence:
+
+- `firmware/include/safety.h` and the updated `vertical_slice.cpp`
+  reviewed for syntax/structure (brace/paren balance checked
+  programmatically) and cross-checked line-by-line against
+  `logic/safety.py`'s priority order and safe-state matrix. **Still no
+  `pio run` build** -- no PlatformIO toolchain, WiFi network, or physical
+  board access in this environment. This is a reviewed draft, not verified
+  working code, same caveat as every other firmware file so far.
+
+Status updates: none -- this improves code quality within roadmap tasks
+34/35 (already `active`), it doesn't complete a new numbered task. No
+branch status changes either, per the recheck session's standard for
+unverified/never-compiled C++.
+
+Next task: same as before, now with one more thing to decide -- build
+`env:vertical_slice`, add WiFi credentials, test with `curl`, AND decide
+whether a spare tact switch (SW1/SW2/SW3) should become the real
+emergency-stop input.
 
 Date: 2026-08-04 JST (Stage 5 first vertical slice drafted)
 
@@ -593,14 +651,17 @@ These must not be guessed:
 - Whether the placeholder runtime tuning constants (10s stale-data timeout,
   5-message recovery threshold, 2048-byte max request body, -40C to 85C
   temperature validation range) are acceptable.
-- Whether `logic/safety.py` should be ported to firmware before Stage 5
-  continues -- `firmware/src/vertical_slice.cpp` currently has no safety
-  override layer.
+- Whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical
+  emergency-stop input for `kEmergencyStopActive` in
+  `firmware/src/vertical_slice.cpp` -- currently hardcoded `false`.
 
 Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
 (sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
 toolchain (PlatformIO, Arduino framework, C++ -- not MicroPython); servo
-power stability (roadmap task 23). See Completed Work above.
+power stability (roadmap task 23); the safety supervisor is now ported to
+firmware and wired into `vertical_slice.cpp` (its emergency-stop and
+controller-fault *inputs* remain open, tracked separately above). See
+Completed Work above.
 
 ## Next Work
 
@@ -632,10 +693,12 @@ Follow the blueprint order. The next open tasks are:
    errors turn up, add real WiFi credentials to
    `firmware/include/secrets.h`, and test `POST /sensor` against
    `vertical_slice` with `curl` (roadmap task 32) -- confirm the response
-   JSON, OLED contents, and servo motion.
-5. Decide whether `logic/safety.py` needs porting to firmware before Stage
-   5 continues further (currently `vertical_slice.cpp` has no safety
-   override layer).
+   JSON, OLED contents, and servo motion match the safety-supervised
+   values, not just the raw decision.
+5. Decide whether a spare tact switch (SW1/SW2/SW3) should become the real
+   `kEmergencyStopActive` input in `firmware/src/vertical_slice.cpp` (the
+   safety supervisor itself is now wired in; this is its one remaining
+   unconnected input worth deciding on soon).
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
