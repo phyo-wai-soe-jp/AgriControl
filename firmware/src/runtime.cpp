@@ -30,6 +30,15 @@
 namespace {
 
 // Roadmap task 30: request-size limit. Tunable, not a hardware fact.
+//
+// Known limitation found on recheck: WebServer.h reads and buffers the
+// entire request body into RAM *before* handleSensorPost() runs, so this
+// check rejects oversized bodies after they're already allocated, not
+// before. It stops bad data from being processed, but does not by itself
+// prevent memory pressure from a large body. True pre-buffer protection
+// would need a streaming/upload handler (WebServer.h's onUpload-style API)
+// or a switch to ESPAsyncWebServer -- not done here, to keep this draft
+// small and reviewable.
 constexpr size_t kMaxRequestBodyBytes = 2048;
 
 WebServer server(80);

@@ -26,9 +26,9 @@
   "metrics": {
     "overall_percent": 29,
     "roadmap_percent": 28,
-    "branch_percent": 41,
+    "branch_percent": 39,
     "gate_percent": 0,
-    "control_loop_percent": 48
+    "control_loop_percent": 47
   },
   "stages": [
     { "id": 1, "name": "Foundations", "intent": "Board, wiring, use case, safe states, protocol, and acceptance tests." },
@@ -140,7 +140,7 @@
     { "id": 9, "status": "implemented", "name": "Safety supervisor", "purpose": "Final authority and conflict resolution." },
     { "id": 10, "status": "implemented", "name": "Actuator abstraction", "purpose": "Requested, commanded, simulated, measured, and fault states." },
     { "id": 11, "status": "drafted", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
-    { "id": 12, "status": "implemented", "name": "Observability", "purpose": "Meaningful events and state changes." },
+    { "id": 12, "status": "drafted", "name": "Observability", "purpose": "Meaningful events and state changes." },
     { "id": 13, "status": "drafted", "name": "Testing", "purpose": "Logic, integration, failure, endurance, and replay verification." },
     { "id": 14, "status": "planned", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
     { "id": 15, "status": "planned", "name": "Physical expansion", "purpose": "Gradual replacement of virtual components." },

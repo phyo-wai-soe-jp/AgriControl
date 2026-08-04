@@ -1922,11 +1922,11 @@
         "9": "implemented",
         "10": "implemented",
         "11": "drafted",
-        "12": "implemented",
+        "12": "drafted",
         "13": "drafted"
       },
       gates: {},
-      notes: "Firmware toolchain: PlatformIO + Arduino C++. Servo power confirmed on hardware (task 23 done). Stage 4 ESP runtime drafted (async loop, shared state, events, stale-data detection, recovery, HTTP server, validation limits) in firmware/ -- unverified, needs a build and WiFi credentials. See docs/PROJECT_STATE.md.",
+      notes: "System rechecked: 35/35 logic/ tests still pass, dashboard/data/docs mirrors and live deployment confirmed in sync. Branch 12 (Observability) corrected from implemented back to drafted -- the C++ event log has never been compiled, unlike the host-tested Python logic/. Firmware toolchain: PlatformIO + Arduino C++. Servo power confirmed on hardware (task 23 done). Stage 4 ESP runtime drafted in firmware/, still unverified. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

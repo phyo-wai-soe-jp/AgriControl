@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (Stage 4 ESP runtime drafted)
+Last updated: 2026-08-04 JST (system recheck: branch 12 corrected)
 
 ## Live Links
 
@@ -53,15 +53,64 @@ Baseline progress is intentionally conservative:
 
 - Overall progress: 29%
 - Roadmap execution: 28%
-- Branch readiness: 41%
+- Branch readiness: 39%
 - Completion gates: 0%
-- Central control-loop coverage: 48%
+- Central control-loop coverage: 47%
 
 These numbers come from the blueprint-derived model in
 `data/progress-baseline.json`. Browser-local edits on the public dashboard do
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (system recheck)
+
+Agent: agent-01-coordinator (Claude Sonnet 5).
+
+A full audit of every `done` status, every mirrored file, and the live
+deployment, in response to an explicit "recheck" request. Findings:
+
+Verified still correct (no changes needed):
+
+- `python3 -m unittest discover -s tests -v` still passes 35/35 -- Stage 2
+  logic is unaffected by later firmware work.
+- `docs/`, `data/`, and `README.md` all match their `web-build/` mirrors
+  byte-for-byte (`diff` clean on every file).
+- The live deployment (`data/progress-baseline.json` fetched from
+  `https://phyowaisoe.com/agricontrol/taskmanagement/`) matches the repo
+  exactly -- no stale deploy.
+- Roadmap task 4 ("Verify OLED, NeoPixel, buzzer, and servo wiring")
+  re-read: its evidence is explicitly sourced from the manufacturer's
+  manual, not an on-device test, and is kept distinct from Stage 3 tasks
+  17-20 (the actual hands-on tests). Wording was already accurate; no
+  change needed.
+
+Corrected:
+
+- Branch 12 (Observability) was marked `implemented`, resting entirely on
+  `firmware/include/events.h`'s `EventLog` -- C++ that has never been
+  compiled. That's a materially weaker evidence bar than branches 6-10,
+  which are also `implemented` but backed by 35 passing host-run tests.
+  Downgraded branch 12 back to `drafted` to keep the "implemented" label
+  meaning the same thing everywhere on the dashboard.
+- Documented a real limitation found while re-reading
+  `firmware/src/runtime.cpp`: the `kMaxRequestBodyBytes` check runs *after*
+  `WebServer.h` has already buffered the full request body into RAM, not
+  before. It stops oversized bodies from being processed, but doesn't by
+  itself prevent the memory allocation. Added a comment explaining this and
+  what true pre-buffer protection would require (a streaming/upload
+  handler, or ESPAsyncWebServer). No status changed because of this --
+  roadmap task 30 was already `active`, not `done`.
+
+Status updates:
+
+- Branch 12: `implemented` -> `drafted`.
+- `overall_percent` unchanged (29%); `branch_percent` 41% -> 39%;
+  `control_loop_percent` 48% -> 47%; `roadmap_percent` unchanged (28%).
+
+Nothing that was marked `done` turned out to be wrong. The one correction
+(branch 12) was a status that was too generous, not a broken claim -- the
+`EventLog` code itself wasn't touched.
 
 Date: 2026-08-04 JST (Stage 4 ESP runtime drafted)
 
