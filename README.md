@@ -43,9 +43,16 @@ control lab.
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`
   (`python3 -m unittest discover -s tests`).
 - `firmware/` - PlatformIO / Arduino C++ project for the confirmed
-  ESP32-C3M-TRY board: `main.cpp` and Stage 3 output test environments
-  (OLED, NeoPixel, buzzer, servo), unverified by a build in this
-  environment.
+  ESP32-C3M-TRY board: Stage 3 output test environments, a Stage 4 ESP
+  runtime, and a Stage 5 first vertical slice with the safety supervisor
+  ported and wired in. Unverified by a build in this environment -- no
+  PlatformIO toolchain or physical board access here.
+- `backend/` - FastAPI bridge (Stage 6, Branch 3) between the website
+  simulator and the ESP. Unlike `firmware/`, this has actually been run and
+  tested here (`python3 -m pytest backend/tests/`).
+- `simulator/` - the website simulator (Stage 6, Branch 2): virtual
+  temperature slider, ESP response display, virtual window/fan, event log.
+  Functionally tested with a jsdom harness; never opened in a real browser.
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model

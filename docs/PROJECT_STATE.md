@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (safety supervisor ported to firmware)
+Last updated: 2026-08-04 JST (Stage 6 FastAPI bridge + simulator, tested)
 
 ## Live Links
 
@@ -44,19 +44,24 @@ Important files:
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
 - `firmware/` - PlatformIO / Arduino C++ project for the physical
   ESP32-C3M-TRY board: `main.cpp`, Stage 3 output test environments, a
-  drafted Stage 4 ESP runtime (`env:runtime`), and a drafted Stage 5 first
-  vertical slice (`env:vertical_slice`, temperature only, no safety
-  supervisor yet), unverified by a build in this environment.
+  drafted Stage 4 ESP runtime (`env:runtime`), and a Stage 5 first vertical
+  slice with the safety supervisor wired in (`env:vertical_slice`,
+  temperature only). Unverified by a build in this environment.
+- `backend/` - FastAPI bridge (Stage 6, Branch 3). Actually run and tested
+  here: 12 passing pytest tests plus a live end-to-end smoke test.
+- `simulator/` - website simulator (Stage 6, Branch 2): temperature slider,
+  response display, virtual window/fan, event log. Functionally tested
+  with jsdom; never opened in a real browser.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 29%
-- Roadmap execution: 31%
-- Branch readiness: 39%
+- Overall progress: 38%
+- Roadmap execution: 40%
+- Branch readiness: 50%
 - Completion gates: 0%
-- Central control-loop coverage: 47%
+- Central control-loop coverage: 61%
 
 These numbers come from the blueprint-derived model in
 `data/progress-baseline.json`. Browser-local edits on the public dashboard do
@@ -64,9 +69,91 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
-Date: 2026-08-04 JST (safety supervisor ported to firmware)
+Date: 2026-08-04 JST (Stage 6 FastAPI bridge + simulator, tested)
 
-Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+Agent: agent-05-backend, agent-06-frontend-sim (Claude Sonnet 5).
+
+Stage 6 is pure software (Branch 2: website simulation, Branch 3: FastAPI
+bridge) -- unlike every firmware session so far, this could actually be
+executed and verified in this environment. `fastapi`, `httpx`, `uvicorn`,
+and `pytest` were installed and used for real, not just reviewed.
+
+Changed:
+
+- Added `backend/app.py`: a FastAPI bridge with `POST /api/temperature`
+  (roadmap task 42), `GET /api/events` (task 47), `GET /api/health`, and
+  `POST /api/session/reset`. `BridgeSession` owns one `session_id` +
+  sequence counter per process start, matching the blueprint's "new
+  browser start creates a new session_id" protocol rule. `EventLog` is a
+  bounded ring buffer, matching `firmware/include/events.h`'s approach for
+  the same reason (no unbounded growth on a long-running process).
+- Added `backend/tests/test_app.py`: 12 pytest tests, **all passing** --
+  health check; correct protocol shape (`session_id`/`sequence`/`values`)
+  forwarded to the ESP; sequence increments across calls; ESP response
+  relayed unchanged; ESP-unreachable and ESP-rejects-message both return
+  HTTP 502 with the failure logged; pydantic validation rejects a missing
+  `temperature` field before ever reaching the ESP; event log ordering and
+  `limit` query param; session reset issues a new `session_id` and resets
+  the sequence counter; `EventLog`'s ring-buffer eviction verified in
+  isolation; and a 200-sequential-update run (roadmap task 48's bridge-side
+  half) confirming no sequence errors or dropped events under load.
+- **Live end-to-end smoke test**, not just mocked: started the real bridge
+  with `uvicorn`, a throwaway `http.server`-based fake ESP, and drove the
+  whole path with `curl` over real sockets. Confirmed the exact
+  temperature-to-command mapping from `firmware/include/decision.h`
+  (20C -> fan off/window 10, 30C -> fan on/window 90, 40C -> fan on/window
+  170) round-trips correctly through the bridge.
+- Added `simulator/index.html` (roadmap tasks 43-46): a connection panel
+  (health check + session reset), a temperature slider, a response panel,
+  a CSS-animated virtual window whose rotation scales linearly with
+  `window_angle` across the same 10-170 degree range as the firmware, a
+  fan on/off indicator, and an event log pulling from `GET /api/events`.
+  Talks to the FastAPI bridge, never directly to the ESP, per the
+  blueprint's architecture.
+- Functionally tested `simulator/index.html` with a jsdom harness mocking
+  `fetch()` (6 scenarios, all passing): slider-to-display sync; Send
+  posts the correct body and renders the response; window rotation scales
+  correctly at both angle extremes; bridge-unreachable shows an error
+  state without throwing; event log renders fetched items; connection
+  check shows correct connected/unreachable badges.
+- Advanced branch 2 (Website simulation) and branch 3 (FastAPI bridge)
+  from `planned` to `implemented`; branch 12 (Observability) from
+  `drafted` back to `implemented` -- this time earned by the backend event
+  log's real test coverage, not the still-unverified C++ side (see the
+  system-recheck session for why that distinction matters).
+
+Evidence:
+
+- `python3 -m pytest backend/tests/ -v` -> 12 passed.
+- Live smoke test transcript (uvicorn + fake ESP + curl) showing correct
+  sequencing and command mapping over real HTTP, captured in this
+  session's terminal output.
+- jsdom functional test of `simulator/index.html`, 6/6 scenarios passing.
+
+Status updates:
+
+- Roadmap tasks 41, 42, 43, 44, 45, 46, 47 marked `done`.
+- Roadmap task 48 marked `active`: the bridge's own correctness under 200
+  sequential updates is proven; the physical ESP's endurance under the
+  same load is not, and needs the real board.
+- Branches 2, 3 -> `implemented`; branch 12 -> `implemented` (corrected
+  back from `drafted`, this time with real test evidence backing it).
+
+Blockers / open questions (tracked in `data/agent-coordination.json` under
+`agent-05-backend` and `agent-06-frontend-sim`):
+
+1. The real ESP's IP address/hostname, for `AGRICONTROL_ESP_BASE_URL`.
+2. Whether `simulator/index.html`'s virtual window actually looks right in
+   a real browser -- jsdom only checks the computed CSS transform value,
+   not visual rendering.
+3. Whether `allow_origins=["*"]` in the bridge's CORS middleware needs
+   tightening once this isn't purely local development.
+
+Next task: once the ESP is reachable, point `AGRICONTROL_ESP_BASE_URL` at
+it and re-run the live smoke test (or `backend/tests/`) against real
+hardware -- that closes roadmap task 48 fully and gives Gate A's "Website
+receives the response" criterion its first real evidence.
+
 
 The previous session's handoff flagged a real problem and left it as an
 open question rather than fixing it: `vertical_slice.cpp` applied the
@@ -654,14 +741,22 @@ These must not be guessed:
 - Whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical
   emergency-stop input for `kEmergencyStopActive` in
   `firmware/src/vertical_slice.cpp` -- currently hardcoded `false`.
+- The real ESP's IP address/hostname once reachable, for
+  `AGRICONTROL_ESP_BASE_URL` (`backend/app.py`).
+- Whether `simulator/index.html`'s virtual window actually looks right in a
+  real browser (only jsdom-verified so far).
+- Whether `backend/app.py`'s CORS `allow_origins=["*"]` needs tightening.
 
 Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
 (sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
 toolchain (PlatformIO, Arduino framework, C++ -- not MicroPython); servo
 power stability (roadmap task 23); the safety supervisor is now ported to
 firmware and wired into `vertical_slice.cpp` (its emergency-stop and
-controller-fault *inputs* remain open, tracked separately above). See
-Completed Work above.
+controller-fault *inputs* remain open, tracked separately above). The
+FastAPI bridge and website simulator (Stage 6) are built and genuinely
+tested (12 passing pytest tests, a live end-to-end smoke test, and 6
+passing jsdom scenarios) -- the only gap is the real ESP. See Completed
+Work above.
 
 ## Next Work
 
@@ -676,6 +771,10 @@ buzzer/combined-output test environments are drafted in `firmware/`
 runtime, tasks 24-30) and Stage 5's first vertical slice (tasks 31/33-37)
 are drafted in `firmware/src/runtime.cpp`, `firmware/src/vertical_slice.cpp`,
 and `include/`, also unverified -- none of it has been through `pio run`.
+Stage 6 (tasks 41-47) is done and genuinely tested (`backend/`,
+`simulator/`) -- the exception among Stage 3-6 work, since it doesn't need
+the physical board to build or run, only to reach the real ESP for the
+last mile.
 
 Follow the blueprint order. The next open tasks are:
 
@@ -699,6 +798,10 @@ Follow the blueprint order. The next open tasks are:
    `kEmergencyStopActive` input in `firmware/src/vertical_slice.cpp` (the
    safety supervisor itself is now wired in; this is its one remaining
    unconnected input worth deciding on soon).
+6. Once the ESP is reachable, set `AGRICONTROL_ESP_BASE_URL` and re-run
+   `backend/tests/`'s live smoke test against the real board -- closes
+   roadmap task 48 fully and opens `simulator/index.html` in a real browser
+   (roadmap tasks 43-46 are jsdom-verified only so far).
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before

@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-04T09:00:00+09:00",
+  "updated_at": "2026-08-04T11:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,11 +24,11 @@
     }
   },
   "metrics": {
-    "overall_percent": 29,
-    "roadmap_percent": 31,
-    "branch_percent": 39,
+    "overall_percent": 38,
+    "roadmap_percent": 40,
+    "branch_percent": 50,
     "gate_percent": 0,
-    "control_loop_percent": 47
+    "control_loop_percent": 61
   },
   "stages": [
     { "id": 1, "name": "Foundations", "intent": "Board, wiring, use case, safe states, protocol, and acceptance tests." },
@@ -85,14 +85,14 @@
     { "id": 38, "stage": 5, "status": "todo", "title": "Test repeated messages." },
     { "id": 39, "stage": 5, "status": "todo", "title": "Test invalid values." },
     { "id": 40, "stage": 5, "status": "todo", "title": "Test timeout and recovery." },
-    { "id": 41, "stage": 6, "status": "todo", "title": "Create the local FastAPI bridge." },
-    { "id": 42, "stage": 6, "status": "todo", "title": "Forward temperature to the ESP." },
-    { "id": 43, "stage": 6, "status": "todo", "title": "Create the website connection panel." },
-    { "id": 44, "stage": 6, "status": "todo", "title": "Create one temperature slider." },
-    { "id": 45, "stage": 6, "status": "todo", "title": "Display the ESP response." },
-    { "id": 46, "stage": 6, "status": "todo", "title": "Display the virtual window." },
-    { "id": 47, "stage": 6, "status": "todo", "title": "Add an event log." },
-    { "id": 48, "stage": 6, "status": "todo", "title": "Run hundreds of updates." },
+    { "id": 41, "stage": 6, "status": "done", "title": "Create the local FastAPI bridge." },
+    { "id": 42, "stage": 6, "status": "done", "title": "Forward temperature to the ESP." },
+    { "id": 43, "stage": 6, "status": "done", "title": "Create the website connection panel." },
+    { "id": 44, "stage": 6, "status": "done", "title": "Create one temperature slider." },
+    { "id": 45, "stage": 6, "status": "done", "title": "Display the ESP response." },
+    { "id": 46, "stage": 6, "status": "done", "title": "Display the virtual window." },
+    { "id": 47, "stage": 6, "status": "done", "title": "Add an event log." },
+    { "id": 48, "stage": 6, "status": "active", "title": "Run hundreds of updates." },
     { "id": 49, "stage": 7, "status": "todo", "title": "Add soil moisture." },
     { "id": 50, "stage": 7, "status": "todo", "title": "Add tank level." },
     { "id": 51, "stage": 7, "status": "todo", "title": "Add rain." },
@@ -130,8 +130,8 @@
   ],
   "branches": [
     { "id": 1, "status": "verified", "name": "Product definition", "purpose": "Mission, sensors, actuators, qualities, constraints." },
-    { "id": 2, "status": "planned", "name": "Website simulation", "purpose": "Virtual conditions, scenarios, faults, dashboards." },
-    { "id": 3, "status": "planned", "name": "FastAPI bridge", "purpose": "Browser-to-ESP communication, sessions, logs, replay, tests." },
+    { "id": 2, "status": "implemented", "name": "Website simulation", "purpose": "Virtual conditions, scenarios, faults, dashboards." },
+    { "id": 3, "status": "implemented", "name": "FastAPI bridge", "purpose": "Browser-to-ESP communication, sessions, logs, replay, tests." },
     { "id": 4, "status": "drafted", "name": "Protocol", "purpose": "Stable messages and validation rules." },
     { "id": 5, "status": "drafted", "name": "ESP communication", "purpose": "Move data without deciding behavior." },
     { "id": 6, "status": "implemented", "name": "Sensor abstraction", "purpose": "Virtual and physical inputs become canonical state." },
@@ -140,7 +140,7 @@
     { "id": 9, "status": "implemented", "name": "Safety supervisor", "purpose": "Final authority and conflict resolution." },
     { "id": 10, "status": "implemented", "name": "Actuator abstraction", "purpose": "Requested, commanded, simulated, measured, and fault states." },
     { "id": 11, "status": "drafted", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
-    { "id": 12, "status": "drafted", "name": "Observability", "purpose": "Meaningful events and state changes." },
+    { "id": 12, "status": "implemented", "name": "Observability", "purpose": "Meaningful events and state changes." },
     { "id": 13, "status": "drafted", "name": "Testing", "purpose": "Logic, integration, failure, endurance, and replay verification." },
     { "id": 14, "status": "planned", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
     { "id": 15, "status": "planned", "name": "Physical expansion", "purpose": "Gradual replacement of virtual components." },
@@ -218,13 +218,15 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34],
+  "next_tasks": [17, 18, 19, 21, 22, 32, 38, 39, 40, 48],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",
     "Exact PlatformIO platform/framework/Arduino-ESP32 core versions in use",
     "Real WiFi credentials for firmware/include/secrets.h",
     "Whether the placeholder runtime tuning constants (stale-data timeout, recovery threshold, max request body size) are acceptable for the real deployment",
-    "Acceptable temperature validation range for firmware/src/vertical_slice.cpp (currently a placeholder -40C to 85C)"
+    "Acceptable temperature validation range for firmware/src/vertical_slice.cpp (currently a placeholder -40C to 85C)",
+    "Whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical emergency-stop input",
+    "The real ESP's IP address/hostname once it is on a reachable network, for AGRICONTROL_ESP_BASE_URL"
   ]
 }

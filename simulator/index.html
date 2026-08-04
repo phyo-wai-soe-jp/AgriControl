@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AgriControl Simulator</title>
+<style>
+  :root {
+    --bg: #f5f7f3;
+    --panel: #ffffff;
+    --ink: #182a2f;
+    --muted: #64757a;
+    --line: #d7e0dd;
+    --teal: #216c76;
+    --green: #3f7d4e;
+    --amber: #b47724;
+    --red: #b13b43;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 24px;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  p.sub { color: var(--muted); margin: 0 0 20px; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    max-width: 960px;
+  }
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 18px;
+  }
+  .panel h2 { font-size: 1rem; margin: 0 0 12px; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit;
+  }
+  input[type="range"] { width: 100%; }
+  .row { margin-bottom: 12px; }
+  .btn {
+    background: var(--teal);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font: inherit;
+    cursor: pointer;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn.secondary { background: var(--muted); }
+  .temp-value { font-size: 1.6rem; font-weight: 700; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .badge.ok { background: #e5f2e8; color: var(--green); }
+  .badge.warn { background: #fff2d7; color: var(--amber); }
+  .badge.err { background: #f9e7e8; color: var(--red); }
+  .badge.idle { background: #edf1ef; color: var(--muted); }
+  .response-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.9rem; }
+  .response-grid dt { color: var(--muted); }
+  .response-grid dd { margin: 0; font-weight: 600; }
+  .window-scene {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 0;
+  }
+  .window-frame {
+    width: 100px;
+    height: 70px;
+    border: 4px solid var(--ink);
+    position: relative;
+    overflow: hidden;
+    background: #dcecee;
+  }
+  .window-sash {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #9fb8ba;
+    border-right: 3px solid var(--ink);
+    transform-origin: left center;
+    transition: transform 0.4s ease;
+  }
+  .fan-indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .fan-indicator.on { background: var(--green); }
+  .fan-indicator.off { background: var(--line); }
+  ul#eventLog {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 220px;
+    overflow-y: auto;
+    font-size: 0.82rem;
+  }
+  ul#eventLog li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  ul#eventLog li .code { font-weight: 700; }
+  .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+  <h1>AgriControl Simulator</h1>
+  <p class="sub">
+    Blueprint Stage 6 (roadmap tasks 43-46): a virtual temperature sensor that
+    talks to the ESP through the FastAPI bridge (<code>backend/app.py</code>),
+    not directly. First vertical slice scope: temperature only.
+  </p>
+
+  <div class="grid">
+    <section class="panel" id="connectionPanel">
+      <h2>Connection (roadmap task 43)</h2>
+      <div class="row">
+        <label for="bridgeUrl">FastAPI bridge base URL</label>
+        <input type="text" id="bridgeUrl" value="http://127.0.0.1:8000" />
+      </div>
+      <button class="btn" id="checkHealthBtn" type="button">Check connection</button>
+      <button class="btn secondary" id="resetSessionBtn" type="button">Reset session</button>
+      <div class="row" style="margin-top: 12px;">
+        <span class="badge idle" id="connectionBadge">Not checked</span>
+      </div>
+    </section>
+
+    <section class="panel" id="temperaturePanel">
+      <h2>Virtual temperature (roadmap task 44)</h2>
+      <div class="row">
+        <input type="range" id="temperatureSlider" min="-10" max="50" step="0.5" value="25" />
+        <div class="temp-value"><span id="temperatureValue">25.0</span> &deg;C</div>
+      </div>
+      <button class="btn" id="sendBtn" type="button">Send to ESP</button>
+      <label style="margin-top: 10px;">
+        <input type="checkbox" id="autoSendCheckbox" /> Send automatically while dragging
+      </label>
+    </section>
+
+    <section class="panel" id="responsePanel">
+      <h2>ESP response (roadmap task 45)</h2>
+      <span class="badge idle" id="responseBadge">No response yet</span>
+      <dl class="response-grid" id="responseGrid"></dl>
+      <div class="reasons" id="responseReasons"></div>
+    </section>
+
+    <section class="panel" id="windowPanel">
+      <h2>Virtual window &amp; fan (roadmap task 46)</h2>
+      <div class="window-scene">
+        <div class="window-frame">
+          <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
+        </div>
+      </div>
+      <div>
+        <span class="fan-indicator off" id="fanIndicator"></span>
+        <span id="fanLabel">Fan: off</span>
+      </div>
+    </section>
+
+    <section class="panel" id="eventLogPanel" style="grid-column: 1 / -1;">
+      <h2>Event log (roadmap task 47, bridge-side)</h2>
+      <button class="btn secondary" id="refreshEventsBtn" type="button">Refresh</button>
+      <ul id="eventLog"></ul>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const elements = {
+        bridgeUrl: document.getElementById("bridgeUrl"),
+        checkHealthBtn: document.getElementById("checkHealthBtn"),
+        resetSessionBtn: document.getElementById("resetSessionBtn"),
+        connectionBadge: document.getElementById("connectionBadge"),
+        temperatureSlider: document.getElementById("temperatureSlider"),
+        temperatureValue: document.getElementById("temperatureValue"),
+        sendBtn: document.getElementById("sendBtn"),
+        autoSendCheckbox: document.getElementById("autoSendCheckbox"),
+        responseBadge: document.getElementById("responseBadge"),
+        responseGrid: document.getElementById("responseGrid"),
+        responseReasons: document.getElementById("responseReasons"),
+        windowSash: document.getElementById("windowSash"),
+        fanIndicator: document.getElementById("fanIndicator"),
+        fanLabel: document.getElementById("fanLabel"),
+        refreshEventsBtn: document.getElementById("refreshEventsBtn"),
+        eventLog: document.getElementById("eventLog")
+      };
+
+      function bridgeUrl() {
+        return elements.bridgeUrl.value.replace(/\/$/, "");
+      }
+
+      function setBadge(el, text, tone) {
+        el.textContent = text;
+        el.className = "badge " + tone;
+      }
+
+      // Roadmap task 46: virtual window. 10deg (closed) -> 0% open,
+      // 170deg (fully open) -> 100% open, matching
+      // logic/decision.py / firmware/include/decision.h's angle range.
+      function updateWindowVisual(windowAngleDeg, fanOn) {
+        const minDeg = 10;
+        const maxDeg = 170;
+        const clamped = Math.max(minDeg, Math.min(maxDeg, windowAngleDeg));
+        const openFraction = (clamped - minDeg) / (maxDeg - minDeg);
+        const rotation = openFraction * 110; // degrees of visual swing
+        elements.windowSash.style.transform = `rotateY(${rotation}deg)`;
+
+        elements.fanIndicator.className = "fan-indicator " + (fanOn ? "on" : "off");
+        elements.fanLabel.textContent = "Fan: " + (fanOn ? "on" : "off");
+      }
+
+      function renderResponse(body) {
+        setBadge(elements.responseBadge, body.mode || "unknown", body.mode === "automatic" ? "ok" : "warn");
+        elements.responseGrid.innerHTML = "";
+        const rows = [
+          ["Sequence", body.sequence],
+          ["Alarm level", body.alarm_level],
+          ["Fan", body.commands && body.commands.fan ? "on" : "off"],
+          ["Window angle", body.commands ? body.commands.window_angle + "°" : "-"]
+        ];
+        for (const [label, value] of rows) {
+          const dt = document.createElement("dt");
+          dt.textContent = label;
+          const dd = document.createElement("dd");
+          dd.textContent = value === undefined || value === null ? "-" : String(value);
+          elements.responseGrid.appendChild(dt);
+          elements.responseGrid.appendChild(dd);
+        }
+        elements.responseReasons.textContent = (body.reasons || []).join(" ");
+        if (body.commands) {
+          updateWindowVisual(body.commands.window_angle, Boolean(body.commands.fan));
+        }
+      }
+
+      function renderError(message) {
+        setBadge(elements.responseBadge, "Error", "err");
+        elements.responseGrid.innerHTML = "";
+        elements.responseReasons.textContent = message;
+      }
+
+      async function sendTemperature() {
+        const temperature = parseFloat(elements.temperatureSlider.value);
+        try {
+          const res = await fetch(bridgeUrl() + "/api/temperature", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ temperature })
+          });
+          const body = await res.json();
+          if (!res.ok) {
+            renderError(body.detail || "Request failed");
+            return;
+          }
+          renderResponse(body);
+        } catch (error) {
+          renderError("Could not reach the bridge: " + error.message);
+        }
+        refreshEvents();
+      }
+
+      async function checkHealth() {
+        try {
+          const res = await fetch(bridgeUrl() + "/api/health");
+          const body = await res.json();
+          if (res.ok && body.status === "ok") {
+            setBadge(elements.connectionBadge, "Connected (session " + body.session_id.slice(0, 8) + "…)", "ok");
+          } else {
+            setBadge(elements.connectionBadge, "Unexpected response", "warn");
+          }
+        } catch (error) {
+          setBadge(elements.connectionBadge, "Unreachable", "err");
+        }
+      }
+
+      async function resetSession() {
+        try {
+          await fetch(bridgeUrl() + "/api/session/reset", { method: "POST" });
+          await checkHealth();
+          await refreshEvents();
+        } catch (error) {
+          setBadge(elements.connectionBadge, "Unreachable", "err");
+        }
+      }
+
+      async function refreshEvents() {
+        try {
+          const res = await fetch(bridgeUrl() + "/api/events?limit=20");
+          const items = await res.json();
+          elements.eventLog.innerHTML = "";
+          for (const item of items) {
+            const li = document.createElement("li");
+            const time = new Date(item.timestamp_ms).toLocaleTimeString();
+            li.innerHTML = `<span class="code">${item.code}</span> - ${time} - ${item.detail}`;
+            elements.eventLog.appendChild(li);
+          }
+        } catch (error) {
+          // Bridge unreachable; leave the existing log as-is rather than
+          // clearing it, so a transient blip doesn't erase history.
+        }
+      }
+
+      elements.temperatureSlider.addEventListener("input", () => {
+        elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
+        if (elements.autoSendCheckbox.checked) {
+          sendTemperature();
+        }
+      });
+      elements.sendBtn.addEventListener("click", sendTemperature);
+      elements.checkHealthBtn.addEventListener("click", checkHealth);
+      elements.resetSessionBtn.addEventListener("click", resetSession);
+      elements.refreshEventsBtn.addEventListener("click", refreshEvents);
+
+      elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
+    })();
+  </script>
+</body>
+</html>

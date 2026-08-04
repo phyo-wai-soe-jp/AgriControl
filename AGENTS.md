@@ -39,6 +39,9 @@ coordinate, display, record, replay, and verify.
   ESP32-C3-MINI-1, board identity, pin map, peripheral wiring)
 - Host-runnable pure logic and tests: `logic/`, `tests/`
 - Physical board firmware (unverified on hardware): `firmware/`
+- FastAPI bridge, actually tested in this environment: `backend/`
+  (`python3 -m pytest backend/tests/`)
+- Website simulator (jsdom-tested, never in a real browser): `simulator/`
 - Machine-readable baseline: `data/progress-baseline.json`
 - Prompt and test library: `docs/PROMPT_TEST_LIBRARY.md`
 - User guide: `docs/USER_GUIDE.md`

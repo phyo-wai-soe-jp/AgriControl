@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T10:00:00+09:00",
+  "updated_at": "2026-08-04T11:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -109,23 +109,38 @@
     {
       "id": "agent-05-backend",
       "role": "FastAPI bridge agent",
-      "model": "Unassigned",
-      "status": "waiting",
-      "current_work": "Create the local FastAPI bridge for sessions, sequence forwarding, status, events, scenarios, logs, and replay.",
-      "done_work": [],
-      "next_work": "Wait for the first ESP temperature slice contract, then implement Stage 6 bridge endpoints.",
-      "needs_owner": false,
+      "model": "Claude Sonnet 5",
+      "status": "review",
+      "current_work": "Built and tested the FastAPI bridge (backend/app.py): POST /api/temperature forwarding, GET /api/events, session/sequence management, POST /api/session/reset. Unlike firmware, this was actually executed and verified in this environment -- 12 passing pytest tests plus a live end-to-end smoke test (uvicorn + a fake local ESP + curl over real sockets).",
+      "done_work": [
+        "Added backend/app.py: BridgeSession (session_id + sequence counter, matching the blueprint's 'new browser start creates a new session_id' rule), EventLog (bounded ring buffer), and four endpoints.",
+        "Added backend/tests/test_app.py (12 tests, all passing): health, correct protocol shape forwarded to the ESP, sequence increments, response relayed unchanged, ESP-unreachable -> 502 + logged, ESP-rejects -> 502 + logged, missing-field validation, event ordering/limit, session reset, EventLog ring-buffer eviction, and a 200-sequential-update endurance run against a fake ESP (roadmap task 48, bridge-side only).",
+        "Live-smoke-tested end-to-end: real uvicorn process + a throwaway http.server fake ESP + curl, confirmed correct sequencing and temperature-to-command mapping matching firmware/include/decision.h exactly (20C->fan off/window 10, 30C->fan on/window 90, 40C->fan on/window 170).",
+        "Advanced branch 3 (FastAPI bridge) to implemented and branch 12 (Observability) to implemented (backend event log is now genuinely tested, unlike the still-unverified C++ side)."
+      ],
+      "next_work": "Owner: once the real ESP is reachable, set AGRICONTROL_ESP_BASE_URL and re-run backend/tests/ (or at least the live smoke test) against real hardware to close the remaining gap (roadmap task 48's hardware half). Decide whether CORS allow_origins=['*'] needs tightening.",
+      "needs_owner": true,
+      "owner_questions": [
+        "The real ESP's IP address/hostname, once reachable, for AGRICONTROL_ESP_BASE_URL.",
+        "Is allow_origins=['*'] in the CORS middleware acceptable, or should it be restricted once this isn't purely local development?"
+      ],
       "blueprint_scope": ["Stage 6", "Stage 8", "Stage 10", "Branches 3, 4, 12, 14"]
     },
     {
       "id": "agent-06-frontend-sim",
       "role": "Website simulation agent",
-      "model": "Unassigned",
-      "status": "waiting",
-      "current_work": "Build virtual controls, scenario UI, actuator display, feedback injection, event timeline, and dashboard views.",
-      "done_work": [],
-      "next_work": "Wait for FastAPI and protocol contracts, then implement Stage 6, Stage 7, Stage 8, and Stage 9 UI slices.",
-      "needs_owner": false,
+      "model": "Claude Sonnet 5",
+      "status": "review",
+      "current_work": "Built simulator/index.html: connection panel, temperature slider, ESP response display, virtual window/fan visualization, and event log, talking to the FastAPI bridge (not directly to the ESP). Functionally tested with a jsdom harness mocking fetch(); never opened in a real browser.",
+      "done_work": [
+        "Added simulator/index.html (roadmap tasks 43-46): connection panel with health check and session reset, a temperature slider (-10C to 50C), a response panel rendering sequence/alarm/fan/window from the bridge, a CSS-animated window sash whose rotation scales linearly with window_angle (10deg closed -> 170deg open, matching firmware/include/decision.h), and an event log fetched from GET /api/events.",
+        "Functionally verified with jsdom (6 scenarios, all passing): slider updates displayed value; Send posts the correct body and renders the response; window rotation scales correctly across the full angle range; bridge-unreachable shows an error state without throwing; event log renders fetched items; connection check shows correct connected/unreachable badges."
+      ],
+      "next_work": "Owner: open simulator/index.html in an actual browser (not just jsdom) against a running backend/app.py, and once the real ESP is reachable, do a full manual pass: drag the slider, confirm the window visual and fan indicator match what the physical servo/fan actually do.",
+      "needs_owner": true,
+      "owner_questions": [
+        "Does the virtual window animation look right when opened in a real browser (jsdom only checks the computed CSS transform value, not visual rendering)?"
+      ],
       "blueprint_scope": ["Stages 6-9", "Branch 2"]
     },
     {
