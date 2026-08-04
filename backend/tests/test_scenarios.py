@@ -27,13 +27,10 @@ from fastapi.testclient import TestClient
 
 from backend import app as app_module
 from backend.app import BridgeSession, EventLog
+from logic.protocol import is_valid_temperature_c
 from logic.safety import SafetyPriority, evaluate_safety
 from logic.decision import evaluate_decision
 from tests.helpers import make_sensors
-
-# Mirrors firmware/src/irrigation_slice.cpp's kTemperatureMinC/kTemperatureMaxC.
-TEMPERATURE_MIN_C = -40.0
-TEMPERATURE_MAX_C = 85.0
 
 
 @pytest.fixture(autouse=True)
@@ -61,7 +58,7 @@ def real_esp_responder(previous_pump_requested: bool = False) -> Callable[[str, 
     def responder(url: str, payload: dict) -> Tuple[int, dict]:
         values = payload["values"]
         temperature = values["temperature"]
-        if not (TEMPERATURE_MIN_C <= temperature <= TEMPERATURE_MAX_C):
+        if not is_valid_temperature_c(temperature):
             return 400, {"accepted": False, "error": "temperature out of range"}
 
         sensors = make_sensors(

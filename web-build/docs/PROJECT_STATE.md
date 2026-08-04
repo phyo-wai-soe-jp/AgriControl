@@ -71,6 +71,92 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (Stage 4/5 protocol: staleness, recovery, message validation, host/tested)
+
+Agent: agent-03-logic (Claude Sonnet 5).
+
+After Stage 10, re-checked whether "pure-software roadmap progress is
+exhausted" (the prior session's stated conclusion) actually held up. It
+didn't: Stage 5's remaining test tasks (38-40: repeated messages, invalid
+values, timeout and recovery) looked hardware-blocked at a glance, but the
+behavior they test -- sequence-duplicate rejection, temperature-range
+validation, staleness+recovery mode transitions -- is pure logic that
+`firmware/include/canonical.h`'s `isStale`, `firmware/include/
+system_state.h`'s `RecoveryTracker`, and `firmware/include/
+shared_state.h`'s `SharedState::tick()` already implement in C++, with no
+Python equivalent to prove it against first. Same gap Stage 9 found for
+actuator feedback, just in a different corner of the codebase.
+
+Changed:
+
+- Added `logic/protocol.py` (roadmap tasks 25/27/28/38/39/40, Branches 4:
+  Protocol, 7: State management): `is_valid_sequence()` (rejects
+  duplicate/out-of-order sequence numbers, task 38) and
+  `is_valid_temperature_c()` (rejects physically implausible readings
+  before they'd reach the decision engine, task 39) factor out validation
+  that was previously duplicated inline across three different .cpp
+  files. `is_stale()` and `RecoveryTracker` mirror `canonical.h`'s
+  staleness check and `system_state.h`'s recovery-streak tracker (tasks
+  27/28). `evaluate_tick()` mirrors `SharedState::tick()`'s full cycle:
+  staleness moves AUTOMATIC->WARNING, freshness moves WARNING->RECOVERY,
+  and enough consecutive valid messages move RECOVERY->AUTOMATIC (task
+  40) -- proving the same recovery chain the blueprint documents
+  (Failure -> Safe state -> Consecutive valid messages -> Stable
+  communication confirmed -> Resume automatic).
+- Added `tests/test_protocol.py`: 21 tests covering sequence validation
+  (first-ever, duplicate, out-of-order, next, and gap-ahead cases),
+  temperature boundaries (inclusive at -40/85, just outside, wildly out
+  of range), staleness timing, `RecoveryTracker`'s streak behavior
+  (confirms at exactly 5, resets on failure, doesn't overflow past 5),
+  and a full multi-step recovery cycle exercised the same way
+  `SharedState::tick()` would be called once per `loop()` iteration
+  (staleness -> WARNING -> freshness -> RECOVERY -> N valid messages ->
+  AUTOMATIC, plus repeated-stale-tick and stale-during-recovery edge
+  cases).
+- Refactored `backend/tests/test_scenarios.py`'s `invalid_data` scenario
+  to call `logic.protocol.is_valid_temperature_c()` instead of a locally
+  duplicated `-40/85` constant pair, removing that duplication now that
+  a real home for it exists.
+
+Evidence:
+
+- `python3 -m unittest discover -s tests` -> 84 passed (up from 63).
+- `python3 -m pytest backend/tests/` -> 24 passed, unaffected by the
+  refactor (same behavior, single source of truth for the constant).
+- Recomputed `data/progress-baseline.json`'s metrics by hand with the
+  same formula as `web-build/index.html`, then confirmed the dashboard's
+  own live jsdom rendering produces identical numbers before committing.
+
+Status updates:
+
+- Roadmap tasks 25, 27, 28 (Stage 4) and 38, 39, 40 (Stage 5) marked
+  `done` -- same evidence bar as Stage 2's decision/safety tasks: a
+  proven-correct Python algorithm, cross-checked line-by-line against
+  the existing C++ header it mirrors. Tasks 24 (async runtime), 26
+  (event system -- already covered by `backend/app.py`'s own tested
+  `EventLog`, a distinct but analogous implementation, not directly
+  reused as evidence here), 29 (HTTP server), and 30 (request-size
+  limits) remain `active` -- genuinely un-host-testable without a real
+  async loop or HTTP server.
+- Branch 4 (Protocol) advanced `drafted` -> `implemented` -- first real
+  tested content in that branch.
+- `data/progress-baseline.json` metrics: overall 46% -> 49%, roadmap 61%
+  -> 72% (45/82 -> 51/82 tasks done), branches 57% -> 59%, control loop
+  63% -> 66% (loop steps 2 and 3 both reference branch 4). `updated_at`
+  bumped to `2026-08-04T20:00:00+09:00`; `web-build/index.html`'s
+  `BASELINE_VERSION` bumped to match. Also trimmed the dashboard's
+  `notes` field, which had grown very long across several sessions, down
+  to a concise current summary rather than appending indefinitely.
+
+Next task: pure-software roadmap progress is now much closer to genuinely
+exhausted -- every remaining `todo`/`active` task either needs the
+physical board (Stage 3's output tests, task 32's curl-against-a-real-ESP,
+Stage 4's async runtime/HTTP server, task 48's hardware half, Stage 7's
+task 56/57 physical evidence) or is Stage 11/12 territory requiring a
+deliberate owner scope decision (real sensors, MQTT, multi-device, auth,
+packaging) that this project's own docs say to defer. Task 70 (watchdog)
+stays intentionally untouched.
+
 Date: 2026-08-04 JST (Stage 10 reliability: recording/replay/versioning/limits, host/tested)
 
 Agent: agent-03-logic (Claude Sonnet 5).
