@@ -71,6 +71,86 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (Stage 10 reliability: recording/replay/versioning/limits, host/tested)
+
+Agent: agent-03-logic (Claude Sonnet 5).
+
+Continuing in roadmap order after Stage 9: Stage 10 ("Reliability") targets
+Branches 3, 4, 12, 13, 14. Its hazards, per `docs/PROMPT_TEST_LIBRARY.md`:
+"Record protocol and rule versions. Do not add a watchdog until runtime
+behavior is understood. Known limits must be explicit." Tasks 67, 68, 69,
+71 are all pure logic/documentation and could be built and executed here;
+task 70 (watchdog) is explicitly gated by the blueprint's own wording on
+runtime stability this environment can't establish, so it was left alone
+on purpose, not skipped by oversight.
+
+Changed:
+
+- Added `DECISION_RULES_VERSION`/`SAFETY_RULES_VERSION` constants to
+  `logic/decision.py`/`logic/safety.py` (roadmap task 68) -- additive only,
+  no behavior change, so the existing 35 Stage 2 tests needed no changes.
+- Added `logic/replay.py` (roadmap tasks 67-68, Branch 14: Recording and
+  replay, previously `planned`, the only branch still untouched):
+  `record_cycle()` runs one real decision cycle and records every input,
+  both rule versions, and the outputs produced; `replay_cycle()`/
+  `replay_sequence()` re-run recorded inputs through the *current* rules
+  and report any field that no longer matches what was recorded;
+  `save_recording()`/`load_recording()` persist a recording as JSON lines.
+- Added `tests/test_replay.py` (8 tests): recording correctness (including
+  the low-tank case, where the recorded *requested* pump state and the
+  recorded *commanded* state deliberately differ), replay-detects-nothing
+  on an unmodified recording, replay-detects-a-hand-tampered field,
+  replay-detects-mismatches-across-a-multi-cycle-sequence, and -- the
+  strongest evidence -- **replay catches a genuine rule change**: the test
+  temporarily mutates `decision.TEMP_FAN_ON_ABOVE` (restored in a
+  `finally` block) and confirms `replay_cycle()` actually flags the
+  now-different `requested_fan` outcome, proving this isn't just comparing
+  trivially-equal data.
+- Added `TestLongDurationRecordingAndReplay` (roadmap task 69): records
+  1,000 varied cycles (temperature/moisture/rain/tank all cycling through
+  their full ranges) and replays all of them, asserting zero mismatches
+  over the full run -- endurance evidence for the new replay engine
+  itself, distinct from `backend/tests/test_app.py`'s existing 200-update
+  bridge endurance test.
+- Added a "Known Limits" section to this file (roadmap task 71), listing
+  the boundaries of the current design that hold regardless of any owner
+  answer (single device, no persistent storage, no auth, no MQTT, no
+  watchdog, pump/fan not physically driven, firmware never compiled,
+  Stage 9's fault detection is simulated not measured, Stage 10's replay
+  only catches drift in exercised code paths, and response-time evidence
+  is bridge-side only) -- distinct from "Known Unknowns" below, which are
+  open questions that *could* be answered.
+
+Evidence:
+
+- `python3 -m unittest discover -s tests` -> 63 passed (up from 55).
+- `python3 -m pytest backend/tests/` -> 24 passed, unaffected.
+- Recomputed `data/progress-baseline.json`'s metrics by hand with the same
+  formula as `web-build/index.html`, then confirmed the dashboard's own
+  live jsdom rendering produces identical numbers before committing.
+
+Status updates:
+
+- Roadmap tasks 67, 68, 69, 71 marked `done`. Task 70 (watchdog) stays
+  `todo` -- explicitly gated, not attempted.
+- Branch 14 (Recording and replay) advanced `planned` -> `implemented` --
+  the first real content in that branch, backed by genuinely executed
+  tests, same bar as every other `implemented` branch.
+- `data/progress-baseline.json` metrics: overall 44% -> 46%, roadmap 61%
+  -> 66% (41/82 -> 45/82 tasks done), branches 52% -> 57% (branch 14
+  crossing planned->implemented), control loop unchanged at 63% (branch 14
+  isn't referenced by any control_loop_steps entry). `updated_at` bumped
+  to `2026-08-04T18:00:00+09:00`; `web-build/index.html`'s
+  `BASELINE_VERSION` bumped to match.
+
+Next task: everything remaining in `next_tasks` is now hardware-blocked
+(Stages 3-7's board-dependent tasks) or Stage 11/12 territory (real
+sensors, MQTT, multi-device, auth, packaging), all of which need the
+physical board or a deliberate architecture decision the owner hasn't
+made yet. This is the natural stopping point for pure-software roadmap
+progress until real hardware access or further owner direction changes
+what's reachable.
+
 Date: 2026-08-04 JST (Stage 9 closed-loop simulation, host/tested)
 
 Agent: agent-03-logic (Claude Sonnet 5).
@@ -1045,6 +1125,56 @@ Status updates (older sessions, superseded above where noted):
 - Product definition is marked `verified`.
 - Protocol, observability, and testing are marked `drafted`.
 - Roadmap steps 5-8 are marked `done`.
+
+## Known Limits
+
+Roadmap task 71 (Stage 10). Unlike "Known Unknowns" below (open questions
+that could be answered), these are boundaries of the current design that
+hold regardless of any owner answer, until a future stage deliberately
+changes them:
+
+- **Single ESP device only.** No multi-device support; that is Stage 12
+  (task 78), not attempted here.
+- **No persistent storage.** `backend/app.py`'s session, sequence counter,
+  and event log all live in process memory and reset on every restart
+  (Stage 12 task 79 is the first point this would change).
+- **No authentication anywhere in the loop.** The FastAPI bridge and the
+  ESP's own HTTP server accept any request; CORS on the bridge is wide
+  open (`allow_origins=["*"]`). Stage 12 task 80, not attempted.
+- **No MQTT or remote/cloud access.** Deliberately deferred to Stage 12
+  (task 77) per `docs/AI_CONTINUITY_SYSTEM.md`'s "avoid MQTT and cloud
+  services until the first local control loop is proven stable" -- even
+  after a hardware-verified MQTT+Cloudflare reference implementation
+  (`Full-control-on-ESP32`) was available to port from.
+- **No watchdog.** Task 70 is explicitly gated in the blueprint's own
+  wording ("Add a watchdog only after runtime stability") and has not
+  been attempted for that reason, not because it was overlooked.
+- **Pump and fan are not physically driven.** No GPIO/relay pin has been
+  assigned for either (see Known Unknowns below); every session's
+  irrigation/fan logic computes and reports a commanded state but never
+  writes it to a pin.
+- **`firmware/` has never been compiled or run.** Every C++ file across
+  every stage is a reviewed, line-by-line-checked port of the equivalent
+  `logic/` module, not verified working code -- there is no PlatformIO
+  toolchain, physical board, or reachable WiFi network in this
+  environment. Test coverage is asymmetric by design: `logic/`,
+  `backend/`, and `simulator/` are genuinely executed and proven;
+  `firmware/` is reviewed only.
+- **Stage 9's actuator-fault detection is simulated, not measured.**
+  `logic/actuator_feedback.py` proves the safety supervisor responds
+  correctly to a detected fault, using an injected/simulated feedback
+  source -- there is no real feedback sensor hardware (current-sense,
+  limit switches) confirmed for this board to detect a real fault from.
+- **Stage 10's replay (`logic/replay.py`) only catches drift in code
+  paths the recording actually exercised.** A changed threshold that no
+  recorded scenario ever crossed will not surface as a replay mismatch --
+  replay is a regression check against recorded behavior, not a proof of
+  correctness for untested inputs.
+- **"Response time" evidence throughout this project (Stage 8's scenario
+  tests, Stage 6/7's endurance tests) measures the FastAPI bridge's own
+  in-process call time**, not real network latency or the physical ESP's
+  actual round-trip time -- there is no real network or board to measure
+  here.
 
 ## Known Unknowns
 

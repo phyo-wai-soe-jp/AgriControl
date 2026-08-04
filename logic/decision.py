@@ -18,6 +18,12 @@ from typing import List
 
 from .canonical import SensorState
 
+# Roadmap task 68: rule versioning. Bump this whenever the thresholds or
+# branching logic below change meaning (not for comments/docstrings), so a
+# replayed recording (logic/replay.py) can tell "the rules changed" apart
+# from "this is a genuine regression."
+DECISION_RULES_VERSION = "1.0.0"
+
 FAN_OFF = False
 FAN_ON = True
 

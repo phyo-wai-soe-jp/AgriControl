@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-04T16:00:00+09:00",
+  "updated_at": "2026-08-04T18:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,9 +24,9 @@
     }
   },
   "metrics": {
-    "overall_percent": 44,
-    "roadmap_percent": 61,
-    "branch_percent": 52,
+    "overall_percent": 46,
+    "roadmap_percent": 66,
+    "branch_percent": 57,
     "gate_percent": 0,
     "control_loop_percent": 63
   },
@@ -111,11 +111,11 @@
     { "id": 64, "stage": 9, "status": "done", "title": "Add stuck-on and stuck-off faults." },
     { "id": 65, "stage": 9, "status": "done", "title": "Add incorrect virtual servo position." },
     { "id": 66, "stage": 9, "status": "done", "title": "Make the ESP respond to feedback faults." },
-    { "id": 67, "stage": 10, "status": "todo", "title": "Add recording and replay." },
-    { "id": 68, "stage": 10, "status": "todo", "title": "Add rule versioning." },
-    { "id": 69, "stage": 10, "status": "todo", "title": "Run long-duration tests." },
+    { "id": 67, "stage": 10, "status": "done", "title": "Add recording and replay." },
+    { "id": 68, "stage": 10, "status": "done", "title": "Add rule versioning." },
+    { "id": 69, "stage": 10, "status": "done", "title": "Run long-duration tests." },
     { "id": 70, "stage": 10, "status": "todo", "title": "Add a watchdog only after runtime stability." },
-    { "id": 71, "stage": 10, "status": "todo", "title": "Document known limits." },
+    { "id": 71, "stage": 10, "status": "done", "title": "Document known limits." },
     { "id": 72, "stage": 11, "status": "todo", "title": "Add a real temperature sensor." },
     { "id": 73, "stage": 11, "status": "todo", "title": "Add per-sensor source selection." },
     { "id": 74, "stage": 11, "status": "todo", "title": "Add real soil, tank, and rain sensors." },
@@ -142,7 +142,7 @@
     { "id": 11, "status": "drafted", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
     { "id": 12, "status": "implemented", "name": "Observability", "purpose": "Meaningful events and state changes." },
     { "id": 13, "status": "implemented", "name": "Testing", "purpose": "Logic, integration, failure, endurance, and replay verification." },
-    { "id": 14, "status": "planned", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
+    { "id": 14, "status": "implemented", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
     { "id": 15, "status": "planned", "name": "Physical expansion", "purpose": "Gradual replacement of virtual components." },
     { "id": 16, "status": "planned", "name": "Platform expansion", "purpose": "MQTT, multi-device, database, authentication, SaaS." }
   ],
@@ -218,7 +218,7 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 32, 38, 39, 40, 48, 56, 57, 67, 68, 69, 71],
+  "next_tasks": [17, 18, 19, 21, 22, 32, 38, 39, 40, 48, 56, 57, 70],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",

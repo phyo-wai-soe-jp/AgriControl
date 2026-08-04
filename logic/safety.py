@@ -20,6 +20,12 @@ from typing import List, Optional
 
 from .decision import Decision, WINDOW_CLOSED_DEG
 
+# Roadmap task 68: rule versioning, mirroring DECISION_RULES_VERSION in
+# logic/decision.py -- kept as a separate constant since this module's
+# priority order and safe-state matrix can change independently of the
+# decision engine's thresholds.
+SAFETY_RULES_VERSION = "1.0.0"
+
 SAFE_WINDOW_DEG = WINDOW_CLOSED_DEG
 LOW_TANK_THRESHOLD_PERCENT = 15.0
 
