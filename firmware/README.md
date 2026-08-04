@@ -1,4 +1,4 @@
-# Firmware (Stage 3 - Local physical outputs; Stage 4 - ESP runtime; Stage 5 - First vertical slice)
+# Firmware (Stage 3 - Local physical outputs; Stage 4 - ESP runtime; Stage 5 - First vertical slice; Stage 7 - Irrigation slice)
 
 PlatformIO / Arduino C++ project for the confirmed board: **ESP32-C3M-TRY**
 (MicroFan), module **ESP32-C3-MINI-1** (RISC-V, 4MB flash). Board facts and
@@ -29,12 +29,13 @@ pio run -e test_servo -t upload       # roadmap task 20
 pio run -e test_all_outputs -t upload # roadmap task 21 (run after 17-19)
 pio run -e runtime -t upload          # roadmap tasks 24-30 (needs secrets.h)
 pio run -e vertical_slice -t upload   # roadmap tasks 31/33-37 (needs secrets.h)
+pio run -e irrigation_slice -t upload # roadmap tasks 49-57 (needs secrets.h)
 pio device monitor                    # serial output, 115200 baud
 ```
 
-`env:runtime` and `env:vertical_slice` need WiFi credentials: copy
-`include/secrets.h.example` to `include/secrets.h` and fill in real values.
-`secrets.h` is gitignored and must never be committed.
+`env:runtime`, `env:vertical_slice`, and `env:irrigation_slice` need WiFi
+credentials: copy `include/secrets.h.example` to `include/secrets.h` and
+fill in real values. `secrets.h` is gitignored and must never be committed.
 
 ## Pin map (manual Table 5.2)
 
@@ -115,6 +116,21 @@ pio device monitor                    # serial output, 115200 baud
   - `kControllerFaultActive` -- no self-health-check exists yet to set it.
   `dataStale` and `isStartup` are real, driven by `SharedState::tick()` and
   by whether any message has ever been accepted.
+- `include/irrigation.h` - Stage 7 tasks 49/51-54: extends decision.h/
+  safety.h without modifying them (`vertical_slice.cpp` stays exactly as
+  it was). `FullDecision`/`evaluateFullDecision` add soil-moisture +
+  rain-gated pump hysteresis; `FullSafetyResult`/`evaluateFullSafety` add
+  the `EQUIPMENT_PROTECTION` tier for low-tank pump protection. Same
+  design decision as `logic/decision.py`: tank-level gating lives in the
+  safety layer, not the decision layer.
+- `src/irrigation_slice.cpp` (`env:irrigation_slice`) - Stage 7 tasks
+  49-57: soil moisture / tank level / rain validation, the full decision +
+  safety pipeline, a NeoPixel status color keyed to `alarm_level` (task
+  56), a non-blocking buzzer tone on alarm-level changes (task 56), and an
+  extended OLED page showing soil/tank/pump/fan (task 57). **Pump is
+  reported, never physically driven** -- same situation as the fan in
+  `vertical_slice.cpp`: no pump GPIO/relay pin has been assigned. Read the
+  file header before assuming this drives real irrigation hardware.
 
 ## Resolved this session
 
@@ -151,3 +167,14 @@ generic eval board, not the AgriControl greenhouse build:
    physical emergency-stop input for `kEmergencyStopActive` in
    `src/vertical_slice.cpp`? Currently hardcoded `false` -- no switch is
    assigned. Do not guess which switch; ask first.
+7. `src/irrigation_slice.cpp`'s NeoPixel color mapping (critical=red,
+   warning=yellow, startup=blue, normal=green) is an explicit
+   interpretation of the manual's ambiguous "Green normal, blue automatic,
+   yellow warning, red critical, purple manual" spec, not a confirmed
+   rule -- does it match what's actually wanted?
+8. The buzzer tone pattern on alarm changes (single tone, pitch by
+   severity) is a simplification of the blueprint's "confirmation/warning
+   pattern/critical pattern" description, chosen specifically to avoid
+   blocking `delay()` calls in the HTTP handler -- acceptable, or is a
+   real multi-beep pattern (needing an async/non-blocking beep scheduler)
+   worth building?

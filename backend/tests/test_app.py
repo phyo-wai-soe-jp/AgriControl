@@ -1,9 +1,10 @@
-"""Tests for the FastAPI bridge (roadmap tasks 41, 42, 47, 48).
+"""Tests for the FastAPI bridge (roadmap tasks 41, 42, 47, 48, and the
+Stage 7 irrigation fields added to /api/temperature: 49-51).
 
 Runs entirely on the host -- no physical ESP needed. httpx.post is
 monkeypatched to a fake ESP so these tests are fast, deterministic, and
 don't depend on network or hardware availability. This is the one part of
-AgriControl's Stage 4-6 work that can be genuinely executed and verified
+AgriControl's Stage 4-7 work that can be genuinely executed and verified
 from this environment, unlike the firmware (no PlatformIO toolchain here).
 """
 from __future__ import annotations
@@ -145,6 +146,79 @@ class TestForwardTemperature:
         response = client.post("/api/temperature", json={})
         assert response.status_code == 422  # FastAPI/pydantic validation error
         assert calls == []  # never reached the (fake) ESP
+
+
+class TestIrrigationFields:
+    """Roadmap tasks 49-51: soil moisture, tank level, and rain forwarded
+    alongside temperature, matching firmware/include/irrigation.h /
+    firmware/src/irrigation_slice.cpp's optional-field handling."""
+
+    def test_temperature_only_omits_irrigation_keys(self, client, monkeypatch):
+        captured = {}
+        install_fake_esp(
+            monkeypatch,
+            lambda url, payload: captured.update(payload)
+            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+        )
+
+        client.post("/api/temperature", json={"temperature": 25.0})
+        assert captured["values"] == {"temperature": 25.0}
+        assert "soil_moisture" not in captured["values"]
+        assert "water_level_percent" not in captured["values"]
+        assert "rain" not in captured["values"]
+
+    def test_all_four_fields_forwarded_together(self, client, monkeypatch):
+        captured = {}
+        install_fake_esp(
+            monkeypatch,
+            lambda url, payload: captured.update(payload)
+            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+        )
+
+        client.post(
+            "/api/temperature",
+            json={"temperature": 20.0, "soil_moisture": 22.5, "water_level_percent": 60.0, "rain": 0},
+        )
+        assert captured["values"] == {
+            "temperature": 20.0,
+            "soil_moisture": 22.5,
+            "water_level_percent": 60.0,
+            "rain": 0.0,
+        }
+
+    def test_partial_irrigation_fields_only_forwards_what_was_sent(self, client, monkeypatch):
+        captured = {}
+        install_fake_esp(
+            monkeypatch,
+            lambda url, payload: captured.update(payload)
+            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+        )
+
+        client.post("/api/temperature", json={"temperature": 20.0, "soil_moisture": 15.0})
+        assert captured["values"] == {"temperature": 20.0, "soil_moisture": 15.0}
+        assert "water_level_percent" not in captured["values"]
+        assert "rain" not in captured["values"]
+
+    def test_rain_accepts_zero_and_one(self, client, monkeypatch):
+        captured_payloads = []
+        install_fake_esp(
+            monkeypatch,
+            lambda url, payload: captured_payloads.append(payload)
+            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+        )
+
+        client.post("/api/temperature", json={"temperature": 20.0, "rain": 0})
+        client.post("/api/temperature", json={"temperature": 20.0, "rain": 1})
+        assert captured_payloads[0]["values"]["rain"] == 0.0
+        assert captured_payloads[1]["values"]["rain"] == 1.0
+
+    def test_non_numeric_irrigation_field_is_rejected_before_forwarding(self, client, monkeypatch):
+        calls = []
+        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+
+        response = client.post("/api/temperature", json={"temperature": 20.0, "soil_moisture": "wet"})
+        assert response.status_code == 422
+        assert calls == []
 
 
 class TestEvents:

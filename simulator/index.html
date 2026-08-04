@@ -132,9 +132,10 @@
 <body>
   <h1>AgriControl Simulator</h1>
   <p class="sub">
-    Blueprint Stage 6 (roadmap tasks 43-46): a virtual temperature sensor that
-    talks to the ESP through the FastAPI bridge (<code>backend/app.py</code>),
-    not directly. First vertical slice scope: temperature only.
+    Blueprint Stage 6 (roadmap tasks 43-46) and Stage 7 (tasks 49-51, 55):
+    virtual temperature, soil moisture, tank level, and rain sensors that
+    talk to the ESP through the FastAPI bridge (<code>backend/app.py</code>),
+    not directly.
   </p>
 
   <div class="grid">
@@ -163,6 +164,33 @@
       </label>
     </section>
 
+    <section class="panel" id="irrigationPanel">
+      <h2>Virtual irrigation (roadmap tasks 49-51, Stage 7)</h2>
+      <div class="row">
+        <label>
+          <input type="checkbox" id="soilMoistureEnabled" checked /> Soil moisture
+          <span id="soilMoistureValue">45</span>%
+        </label>
+        <input type="range" id="soilMoistureSlider" min="0" max="100" step="1" value="45" />
+      </div>
+      <div class="row">
+        <label>
+          <input type="checkbox" id="tankLevelEnabled" checked /> Tank level
+          <span id="tankLevelValue">70</span>%
+        </label>
+        <input type="range" id="tankLevelSlider" min="0" max="100" step="1" value="70" />
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="rainEnabled" checked /> Send rain reading</label>
+        <label style="margin-left: 16px;"><input type="checkbox" id="rainToggle" /> Raining now</label>
+      </div>
+      <p class="reasons" style="margin: 4px 0 0;">
+        Unchecking a "Send" checkbox omits that field entirely (matching
+        firmware/include/irrigation.h's "unavailable reading" handling), it
+        does not send 0.
+      </p>
+    </section>
+
     <section class="panel" id="responsePanel">
       <h2>ESP response (roadmap task 45)</h2>
       <span class="badge idle" id="responseBadge">No response yet</span>
@@ -171,15 +199,19 @@
     </section>
 
     <section class="panel" id="windowPanel">
-      <h2>Virtual window &amp; fan (roadmap task 46)</h2>
+      <h2>Virtual window, fan &amp; pump (roadmap tasks 46, 55)</h2>
       <div class="window-scene">
         <div class="window-frame">
           <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
         </div>
       </div>
-      <div>
+      <div class="row">
         <span class="fan-indicator off" id="fanIndicator"></span>
         <span id="fanLabel">Fan: off</span>
+      </div>
+      <div>
+        <span class="fan-indicator off" id="pumpIndicator"></span>
+        <span id="pumpLabel">Pump: off</span>
       </div>
     </section>
 
@@ -209,8 +241,18 @@
         windowSash: document.getElementById("windowSash"),
         fanIndicator: document.getElementById("fanIndicator"),
         fanLabel: document.getElementById("fanLabel"),
+        pumpIndicator: document.getElementById("pumpIndicator"),
+        pumpLabel: document.getElementById("pumpLabel"),
         refreshEventsBtn: document.getElementById("refreshEventsBtn"),
-        eventLog: document.getElementById("eventLog")
+        eventLog: document.getElementById("eventLog"),
+        soilMoistureEnabled: document.getElementById("soilMoistureEnabled"),
+        soilMoistureSlider: document.getElementById("soilMoistureSlider"),
+        soilMoistureValue: document.getElementById("soilMoistureValue"),
+        tankLevelEnabled: document.getElementById("tankLevelEnabled"),
+        tankLevelSlider: document.getElementById("tankLevelSlider"),
+        tankLevelValue: document.getElementById("tankLevelValue"),
+        rainEnabled: document.getElementById("rainEnabled"),
+        rainToggle: document.getElementById("rainToggle")
       };
 
       function bridgeUrl() {
@@ -225,7 +267,7 @@
       // Roadmap task 46: virtual window. 10deg (closed) -> 0% open,
       // 170deg (fully open) -> 100% open, matching
       // logic/decision.py / firmware/include/decision.h's angle range.
-      function updateWindowVisual(windowAngleDeg, fanOn) {
+      function updateWindowVisual(windowAngleDeg, fanOn, pumpOn) {
         const minDeg = 10;
         const maxDeg = 170;
         const clamped = Math.max(minDeg, Math.min(maxDeg, windowAngleDeg));
@@ -235,6 +277,9 @@
 
         elements.fanIndicator.className = "fan-indicator " + (fanOn ? "on" : "off");
         elements.fanLabel.textContent = "Fan: " + (fanOn ? "on" : "off");
+
+        elements.pumpIndicator.className = "fan-indicator " + (pumpOn ? "on" : "off");
+        elements.pumpLabel.textContent = "Pump: " + (pumpOn ? "on" : "off");
       }
 
       function renderResponse(body) {
@@ -244,6 +289,7 @@
           ["Sequence", body.sequence],
           ["Alarm level", body.alarm_level],
           ["Fan", body.commands && body.commands.fan ? "on" : "off"],
+          ["Pump", body.commands && body.commands.pump ? "on" : "off"],
           ["Window angle", body.commands ? body.commands.window_angle + "°" : "-"]
         ];
         for (const [label, value] of rows) {
@@ -256,7 +302,7 @@
         }
         elements.responseReasons.textContent = (body.reasons || []).join(" ");
         if (body.commands) {
-          updateWindowVisual(body.commands.window_angle, Boolean(body.commands.fan));
+          updateWindowVisual(body.commands.window_angle, Boolean(body.commands.fan), Boolean(body.commands.pump));
         }
       }
 
@@ -266,13 +312,32 @@
         elements.responseReasons.textContent = message;
       }
 
+      // Roadmap tasks 49-51: build the request body with only the fields
+      // the owner has enabled. An unchecked field is omitted entirely
+      // (not sent as 0) -- see firmware/include/irrigation.h /
+      // backend/app.py for why that distinction matters (it means "no
+      // reading available", which holds the previous pump state, not
+      // "moisture is exactly 0%").
+      function buildSensorPayload() {
+        const payload = { temperature: parseFloat(elements.temperatureSlider.value) };
+        if (elements.soilMoistureEnabled.checked) {
+          payload.soil_moisture = parseFloat(elements.soilMoistureSlider.value);
+        }
+        if (elements.tankLevelEnabled.checked) {
+          payload.water_level_percent = parseFloat(elements.tankLevelSlider.value);
+        }
+        if (elements.rainEnabled.checked) {
+          payload.rain = elements.rainToggle.checked ? 1 : 0;
+        }
+        return payload;
+      }
+
       async function sendTemperature() {
-        const temperature = parseFloat(elements.temperatureSlider.value);
         try {
           const res = await fetch(bridgeUrl() + "/api/temperature", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ temperature })
+            body: JSON.stringify(buildSensorPayload())
           });
           const body = await res.json();
           if (!res.ok) {
@@ -333,12 +398,26 @@
           sendTemperature();
         }
       });
+      elements.soilMoistureSlider.addEventListener("input", () => {
+        elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
+        if (elements.autoSendCheckbox.checked) {
+          sendTemperature();
+        }
+      });
+      elements.tankLevelSlider.addEventListener("input", () => {
+        elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
+        if (elements.autoSendCheckbox.checked) {
+          sendTemperature();
+        }
+      });
       elements.sendBtn.addEventListener("click", sendTemperature);
       elements.checkHealthBtn.addEventListener("click", checkHealth);
       elements.resetSessionBtn.addEventListener("click", resetSession);
       elements.refreshEventsBtn.addEventListener("click", refreshEvents);
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
+      elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
+      elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
     })();
   </script>
 </body>

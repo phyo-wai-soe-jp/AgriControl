@@ -1,4 +1,4 @@
-# FastAPI bridge (Stage 6 - Browser and FastAPI)
+# FastAPI bridge (Stage 6 - Browser and FastAPI; Stage 7 - Irrigation slice)
 
 Blueprint Branch 3 ("Browser-to-ESP communication, sessions, logs, replay,
 tests"). Sits between the website simulator (`simulator/index.html`) and the
@@ -35,13 +35,15 @@ at `http://127.0.0.1:8000`.
 python3 -m pytest backend/tests/ -v
 ```
 
-12 tests, all passing as of this writing, covering: health check, forwarding
+17 tests, all passing as of this writing, covering: health check, forwarding
 temperature to the ESP with the correct protocol shape, sequence
 incrementing, relaying the ESP's response unchanged, ESP-unreachable and
 ESP-rejects-message error handling (both return HTTP 502 with the failure
-logged), the event log's bounded ring-buffer behavior, session reset, and a
+logged), the event log's bounded ring-buffer behavior, session reset, a
 200-sequential-update endurance run (roadmap task 48's bridge-side half --
-see "What's not tested" below).
+see "What's not tested" below), and the Stage 7 irrigation fields
+(soil_moisture/water_level_percent/rain: all optional, only forwarded when
+provided, rain restricted to 0/1, type validation).
 
 Also live-smoke-tested end-to-end over real sockets: `uvicorn` serving the
 bridge, a throwaway `http.server`-based fake ESP, and `curl` driving the
@@ -70,9 +72,11 @@ on/window 90, 40C -> fan on/window 170), matching
 
 ## Scope
 
-First vertical slice: temperature only, matching
-`firmware/src/vertical_slice.cpp`. Soil moisture, tank level, and rain
-arrive in Stage 7 -- don't add them to `TemperatureRequest` before then.
+Temperature is required; soil moisture, tank level, and rain are optional,
+matching `firmware/src/irrigation_slice.cpp`'s validation. Pump commands
+are relayed in the ESP's response but not physically actuated anywhere in
+this system yet -- no pump GPIO/relay pin has been assigned on the
+firmware side.
 
 ## Open owner questions
 

@@ -1861,19 +1861,19 @@
         role: "ESP runtime agent",
         model: "Claude Sonnet 5",
         status: "needs_owner",
-        current_work: "Drafted the Stage 4 ESP runtime and the Stage 5 first vertical slice (temperature-only: decision engine, safety supervisor, servo, OLED, JSON response) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access available.",
-        done_work: "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h, decision.h, safety.h and firmware/src/runtime.cpp, vertical_slice.cpp (env:runtime, env:vertical_slice); added secrets.h.example. Safety supervisor now wired in -- servo only ever gets the safety-supervised command, never the raw decision.",
-        next_work: "Owner: decide whether a spare tact switch should be the physical emergency-stop input; add real WiFi credentials to firmware/include/secrets.h; build/upload env:vertical_slice; test POST /sensor with curl; confirm the placeholder tuning constants including the temperature range.",
+        current_work: "Drafted the Stage 4 ESP runtime, Stage 5 first vertical slice, and Stage 7 irrigation slice in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access available.",
+        done_work: "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h, decision.h, safety.h, irrigation.h and firmware/src/runtime.cpp, vertical_slice.cpp, irrigation_slice.cpp (env:runtime, env:vertical_slice, env:irrigation_slice); added secrets.h.example. Safety supervisor wired into both slices -- outputs only ever get the safety-supervised command, never the raw decision. Pump/fan reported, not physically driven (no pins assigned).",
+        next_work: "Owner: decide whether a spare tact switch should be the physical emergency-stop input; decide pump/fan pins; add real WiFi credentials; build/upload env:irrigation_slice; test POST /sensor with curl; confirm the placeholder tuning constants, NeoPixel colors, and buzzer pattern.",
         needs_owner: true,
-        scope: "Stage 4, Stage 5, Branches 5, 7, 12, 13"
+        scope: "Stage 4, Stage 5, Stage 7, Branches 5, 7, 9, 12, 13"
       },
       {
         id: "agent-05-backend",
         role: "FastAPI bridge agent",
         model: "Claude Sonnet 5",
         status: "review",
-        current_work: "Built and tested backend/app.py: temperature forwarding, event log, session/sequence management. 12 passing pytest tests plus a live end-to-end smoke test (uvicorn + fake ESP + curl over real sockets) -- genuinely run, unlike firmware.",
-        done_work: "Added backend/app.py (POST /api/temperature, GET /api/events, GET /api/health, POST /api/session/reset) and backend/tests/test_app.py (12 tests). Advanced branches 3 and 12 to implemented.",
+        current_work: "Built and tested backend/app.py: temperature/soil/tank/rain forwarding, event log, session/sequence management. 17 passing pytest tests plus a live end-to-end smoke test (uvicorn + fake ESP + curl over real sockets) -- genuinely run, unlike firmware.",
+        done_work: "Added backend/app.py (POST /api/temperature with optional irrigation fields, GET /api/events, GET /api/health, POST /api/session/reset) and backend/tests/test_app.py (17 tests). Advanced branches 3 and 12 to implemented.",
         next_work: "Owner: once the real ESP is reachable, set AGRICONTROL_ESP_BASE_URL and re-run the tests/live smoke test against real hardware.",
         needs_owner: true,
         scope: "Stage 6, Stage 8, Stage 10, Branches 3, 4, 12, 14"
@@ -1883,9 +1883,9 @@
         role: "Website simulation agent",
         model: "Claude Sonnet 5",
         status: "review",
-        current_work: "Built simulator/index.html: connection panel, temperature slider, ESP response display, virtual window/fan, event log. Functionally tested with jsdom (6 scenarios passing); never opened in a real browser.",
-        done_work: "Added simulator/index.html talking to the FastAPI bridge. Advanced branch 2 to implemented.",
-        next_work: "Owner: open simulator/index.html in a real browser against a running backend/app.py and confirm the virtual window looks right.",
+        current_work: "Built simulator/index.html: connection panel, temperature/soil/tank/rain controls, ESP response display, virtual window/fan/pump, event log. Functionally tested with jsdom (11 scenarios passing); never opened in a real browser.",
+        done_work: "Added simulator/index.html talking to the FastAPI bridge, including Stage 7 irrigation controls. Advanced branch 2 to implemented.",
+        next_work: "Owner: open simulator/index.html in a real browser against a running backend/app.py and confirm the visuals look right.",
         needs_owner: true,
         scope: "Stages 6-9, Branch 2"
       },
@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-04T11:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-04T12:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1965,7 +1965,16 @@
         "45": "done",
         "46": "done",
         "47": "done",
-        "48": "active"
+        "48": "active",
+        "49": "done",
+        "50": "done",
+        "51": "done",
+        "52": "done",
+        "53": "done",
+        "54": "done",
+        "55": "done",
+        "56": "active",
+        "57": "active"
       },
       branches: {
         "1": "verified",
@@ -1983,7 +1992,7 @@
         "13": "drafted"
       },
       gates: {},
-      notes: "Stage 6 (FastAPI bridge + website simulator) built AND genuinely tested: 12 passing pytest tests, a live end-to-end smoke test (uvicorn + fake ESP + curl over real sockets), and 6 passing jsdom scenarios for the simulator UI. Unlike firmware/, this actually runs in this environment. Safety supervisor ported to firmware (firmware/include/safety.h) and wired into env:vertical_slice. Nothing in firmware/ has been built (pio run) from this environment; the only gap left in Stage 6 is the real ESP. See docs/PROJECT_STATE.md.",
+      notes: "Stage 7 irrigation slice added: soil moisture, tank level, rain, pump hysteresis, and low-tank protection, ported to firmware (env:irrigation_slice, unverified) and genuinely tested end-to-end in backend/ + simulator/ (17 passing pytest tests, 11 passing jsdom scenarios). Pump is reported, never physically driven -- no pump pin assigned. NeoPixel status color and buzzer alarm tone added to firmware but are unverified, physical-output-only code. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

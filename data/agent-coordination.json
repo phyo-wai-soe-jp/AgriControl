@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "project": "AgriControl",
-  "updated_at": "2026-08-04T11:00:00+09:00",
+  "updated_at": "2026-08-04T12:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "purpose": "Coordinate multiple AI agents working on the ESP32 Virtual Control Lab without relying on conversation memory.",
@@ -87,36 +87,39 @@
       "role": "ESP runtime agent",
       "model": "Claude Sonnet 5",
       "status": "needs_owner",
-      "current_work": "Drafted the Stage 4 ESP runtime and the Stage 5 first vertical slice (temperature-only: decision engine, safety supervisor, servo output, OLED display, JSON response) in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access in this environment.",
+      "current_work": "Drafted the Stage 4 ESP runtime, Stage 5 first vertical slice, and Stage 7 irrigation slice in firmware/. Unverified: no PlatformIO toolchain, WiFi network, or board access in this environment.",
       "done_work": [
         "Added firmware/include/canonical.h, system_state.h, events.h, shared_state.h -- SensorState, SystemState (with the same Mode transition graph as logic/system_state.py), RecoveryTracker, and a fixed-capacity EventLog.",
         "Added firmware/src/runtime.cpp (env:runtime): WiFi connect, a WebServer on port 80 with POST /sensor, request-size limit, JSON parse validation, sequence monotonicity check, and unknown-field rejection. Does not yet call a decision engine or drive actuators (Stage 5).",
         "Added firmware/include/secrets.h.example as a WiFi-credential template (gitignored secrets.h, never committed).",
         "Advanced branch 5 (ESP communication) to drafted to reflect the new source (branch 12/Observability was briefly advanced to implemented too, then corrected back to drafted in the system-recheck session -- see agent-01-coordinator).",
         "Added firmware/include/decision.h (temperature-only decision rules, matching logic/decision.py exactly) and firmware/src/vertical_slice.cpp (env:vertical_slice): temperature-range validation, decision engine, servo output, OLED display, and full JSON response (roadmap tasks 31, 33-37).",
-        "Added firmware/include/safety.h (port of logic/safety.py, restricted to the fan/window outputs this slice has) and wired it into vertical_slice.cpp so the servo only ever receives the safety supervisor's commanded value, never the raw decision. Closes the gap flagged in the previous session -- but two of its inputs (emergency stop, controller fault) are still hardcoded false placeholders, not real hardware signals."
+        "Added firmware/include/safety.h (port of logic/safety.py, restricted to the fan/window outputs this slice has) and wired it into vertical_slice.cpp so the servo only ever receives the safety supervisor's commanded value, never the raw decision.",
+        "Added firmware/include/irrigation.h (extends decision.h/safety.h without modifying them: FullDecision/evaluateFullDecision add soil-moisture + rain-gated pump hysteresis; FullSafetyResult/evaluateFullSafety add the EQUIPMENT_PROTECTION tier for low-tank pump protection) and firmware/src/irrigation_slice.cpp (env:irrigation_slice, roadmap tasks 49-57): soil/tank/rain validation, full decision+safety pipeline, NeoPixel status color, non-blocking buzzer tone on alarm changes, extended OLED page. Pump is reported, not physically driven -- no pump pin assigned."
       ],
-      "next_work": "Owner: decide whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical emergency-stop input; create firmware/include/secrets.h with real WiFi credentials; build/upload env:vertical_slice; send a test POST to /sensor (e.g. with curl, roadmap task 32) and report the response/serial log/servo movement/OLED contents; confirm or adjust the placeholder tuning constants (10s stale timeout, 5-message recovery threshold, 2048-byte request cap, -40C to 85C temperature range).",
+      "next_work": "Owner: decide whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical emergency-stop input; create firmware/include/secrets.h with real WiFi credentials; build/upload env:irrigation_slice; send test POST /sensor requests (roadmap task 32) and report the response/serial log/servo movement/OLED/NeoPixel/buzzer behavior; confirm or adjust the placeholder tuning constants and the NeoPixel color / buzzer pattern interpretations.",
       "needs_owner": true,
       "owner_questions": [
         "Real WiFi SSID/password for firmware/include/secrets.h.",
         "Are the placeholder runtime constants (stale-data timeout, recovery threshold, max request body size, temperature validation range) acceptable, or do they need different values?",
-        "Once env:vertical_slice builds: what curl command and response would you like recorded as the task 32/38/39/40 evidence?",
-        "Should one of the spare tact switches (SW1/SW2/SW3) be wired as a physical emergency-stop input for kEmergencyStopActive in vertical_slice.cpp?"
+        "Once env:irrigation_slice builds: what curl command and response would you like recorded as the task 32/38/39/40 evidence?",
+        "Should one of the spare tact switches (SW1/SW2/SW3) be wired as a physical emergency-stop input for kEmergencyStopActive?",
+        "Is the NeoPixel color mapping (critical=red, warning=yellow, startup=blue, normal=green) and the single-tone buzzer pattern acceptable, or should they be revised?"
       ],
-      "blueprint_scope": ["Stage 4", "Stage 5", "Branches 5, 7, 12, 13"]
+      "blueprint_scope": ["Stage 4", "Stage 5", "Stage 7", "Branches 5, 7, 9, 12, 13"]
     },
     {
       "id": "agent-05-backend",
       "role": "FastAPI bridge agent",
       "model": "Claude Sonnet 5",
       "status": "review",
-      "current_work": "Built and tested the FastAPI bridge (backend/app.py): POST /api/temperature forwarding, GET /api/events, session/sequence management, POST /api/session/reset. Unlike firmware, this was actually executed and verified in this environment -- 12 passing pytest tests plus a live end-to-end smoke test (uvicorn + a fake local ESP + curl over real sockets).",
+      "current_work": "Built and tested the FastAPI bridge (backend/app.py): POST /api/temperature forwarding (now including optional soil_moisture/water_level_percent/rain), GET /api/events, session/sequence management, POST /api/session/reset. Unlike firmware, this was actually executed and verified in this environment -- 17 passing pytest tests plus a live end-to-end smoke test (uvicorn + a fake local ESP + curl over real sockets).",
       "done_work": [
         "Added backend/app.py: BridgeSession (session_id + sequence counter, matching the blueprint's 'new browser start creates a new session_id' rule), EventLog (bounded ring buffer), and four endpoints.",
         "Added backend/tests/test_app.py (12 tests, all passing): health, correct protocol shape forwarded to the ESP, sequence increments, response relayed unchanged, ESP-unreachable -> 502 + logged, ESP-rejects -> 502 + logged, missing-field validation, event ordering/limit, session reset, EventLog ring-buffer eviction, and a 200-sequential-update endurance run against a fake ESP (roadmap task 48, bridge-side only).",
         "Live-smoke-tested end-to-end: real uvicorn process + a throwaway http.server fake ESP + curl, confirmed correct sequencing and temperature-to-command mapping matching firmware/include/decision.h exactly (20C->fan off/window 10, 30C->fan on/window 90, 40C->fan on/window 170).",
-        "Advanced branch 3 (FastAPI bridge) to implemented and branch 12 (Observability) to implemented (backend event log is now genuinely tested, unlike the still-unverified C++ side)."
+        "Advanced branch 3 (FastAPI bridge) to implemented and branch 12 (Observability) to implemented (backend event log is now genuinely tested, unlike the still-unverified C++ side).",
+        "Extended SensorRequest with optional soil_moisture/water_level_percent/rain (roadmap tasks 49-51), only forwarding fields the caller actually sent -- an omitted field means 'no reading', not 'zero', matching firmware/include/irrigation.h. Added 5 more tests (17 total, all passing) covering omission, all-fields-together, partial fields, rain's 0/1 restriction, and type validation."
       ],
       "next_work": "Owner: once the real ESP is reachable, set AGRICONTROL_ESP_BASE_URL and re-run backend/tests/ (or at least the live smoke test) against real hardware to close the remaining gap (roadmap task 48's hardware half). Decide whether CORS allow_origins=['*'] needs tightening.",
       "needs_owner": true,
@@ -131,12 +134,13 @@
       "role": "Website simulation agent",
       "model": "Claude Sonnet 5",
       "status": "review",
-      "current_work": "Built simulator/index.html: connection panel, temperature slider, ESP response display, virtual window/fan visualization, and event log, talking to the FastAPI bridge (not directly to the ESP). Functionally tested with a jsdom harness mocking fetch(); never opened in a real browser.",
+      "current_work": "Built simulator/index.html: connection panel, temperature slider, soil/tank/rain irrigation controls, ESP response display, virtual window/fan/pump visualization, and event log, talking to the FastAPI bridge (not directly to the ESP). Functionally tested with a jsdom harness mocking fetch(); never opened in a real browser.",
       "done_work": [
         "Added simulator/index.html (roadmap tasks 43-46): connection panel with health check and session reset, a temperature slider (-10C to 50C), a response panel rendering sequence/alarm/fan/window from the bridge, a CSS-animated window sash whose rotation scales linearly with window_angle (10deg closed -> 170deg open, matching firmware/include/decision.h), and an event log fetched from GET /api/events.",
-        "Functionally verified with jsdom (6 scenarios, all passing): slider updates displayed value; Send posts the correct body and renders the response; window rotation scales correctly across the full angle range; bridge-unreachable shows an error state without throwing; event log renders fetched items; connection check shows correct connected/unreachable badges."
+        "Functionally verified with jsdom (6 scenarios, all passing): slider updates displayed value; Send posts the correct body and renders the response; window rotation scales correctly across the full angle range; bridge-unreachable shows an error state without throwing; event log renders fetched items; connection check shows correct connected/unreachable badges.",
+        "Extended simulator/index.html with soil moisture / tank level sliders and a rain toggle (roadmap tasks 49-51, 55), each with its own 'send this field' checkbox so an unchecked field is omitted entirely, not sent as 0. Added a pump indicator alongside the existing fan indicator. Added 5 more jsdom scenarios (all passing) plus a regression re-check of the original 6 Stage 6 scenarios to confirm nothing broke."
       ],
-      "next_work": "Owner: open simulator/index.html in an actual browser (not just jsdom) against a running backend/app.py, and once the real ESP is reachable, do a full manual pass: drag the slider, confirm the window visual and fan indicator match what the physical servo/fan actually do.",
+      "next_work": "Owner: open simulator/index.html in an actual browser (not just jsdom) against a running backend/app.py, and once the real ESP is reachable, do a full manual pass: drag the sliders, confirm the window/fan/pump visuals match what the physical hardware actually does.",
       "needs_owner": true,
       "owner_questions": [
         "Does the virtual window animation look right when opened in a real browser (jsdom only checks the computed CSS transform value, not visual rendering)?"

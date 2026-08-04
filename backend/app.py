@@ -8,9 +8,10 @@ decides actuator behavior itself; that stays on the ESP, per the
 blueprint's core rule that no interface may bypass the central control
 loop.
 
-First vertical slice scope: temperature only, matching
-firmware/src/vertical_slice.cpp. Soil moisture, tank level, and rain
-arrive in Stage 7.
+Stage 7 (roadmap tasks 49-57) extended this to soil moisture, tank level,
+and rain, matching firmware/src/irrigation_slice.cpp -- all three are
+optional per request, same as the ESP firmware's validation (a request
+with temperature alone still works exactly as it did in Stage 6).
 
 Run locally with: uvicorn backend.app:app --reload
 """
@@ -22,7 +23,7 @@ import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Deque, Iterator, List
+from typing import Deque, Iterator, List, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -79,8 +80,18 @@ class BridgeSession:
         return next(self._sequence)
 
 
-class TemperatureRequest(BaseModel):
+class SensorRequest(BaseModel):
+    """Roadmap tasks 42/49-51: the values the website simulator can send.
+
+    Only `temperature` is required, matching the ESP firmware's
+    validation (firmware/src/irrigation_slice.cpp): a request with just
+    temperature is still a fully valid message, just like Stage 5/6.
+    """
+
     temperature: float = Field(..., description="Virtual temperature in Celsius from the website simulator.")
+    soil_moisture: Optional[float] = Field(None, description="Virtual soil moisture percent (0-100).")
+    water_level_percent: Optional[float] = Field(None, description="Virtual tank level percent (0-100).")
+    rain: Optional[float] = Field(None, description="Virtual rain flag: 0 (no rain) or 1 (raining).")
 
 
 app = FastAPI(title="AgriControl FastAPI Bridge", version="0.1.0")
@@ -101,15 +112,30 @@ def health() -> dict:
 
 
 @app.post("/api/temperature")
-def forward_temperature(request: TemperatureRequest) -> dict:
-    """Roadmap task 42: forward temperature to the ESP."""
+def forward_temperature(request: SensorRequest) -> dict:
+    """Roadmap tasks 42/49-51: forward sensor values to the ESP.
+
+    Only includes keys the caller actually provided -- an omitted
+    soil_moisture/water_level_percent/rain is genuinely "no reading available"
+    to the ESP's decision engine (holds previous pump state), not "assume 0",
+    matching logic/decision.py's / firmware/include/irrigation.h's handling
+    of missing values.
+    """
     sequence = session.next_sequence()
+    values: dict = {"temperature": request.temperature}
+    if request.soil_moisture is not None:
+        values["soil_moisture"] = request.soil_moisture
+    if request.water_level_percent is not None:
+        values["water_level_percent"] = request.water_level_percent
+    if request.rain is not None:
+        values["rain"] = request.rain
+
     payload = {
         "session_id": session.session_id,
         "sequence": sequence,
-        "values": {"temperature": request.temperature},
+        "values": values,
     }
-    events.push("SENT", f"sequence={sequence} temperature={request.temperature}")
+    events.push("SENT", f"sequence={sequence} values={values}")
 
     try:
         response = httpx.post(f"{ESP_BASE_URL}/sensor", json=payload, timeout=ESP_REQUEST_TIMEOUT_SECONDS)

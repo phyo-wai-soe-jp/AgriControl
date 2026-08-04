@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-04T11:00:00+09:00",
+  "updated_at": "2026-08-04T12:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,8 +24,8 @@
     }
   },
   "metrics": {
-    "overall_percent": 38,
-    "roadmap_percent": 40,
+    "overall_percent": 40,
+    "roadmap_percent": 50,
     "branch_percent": 50,
     "gate_percent": 0,
     "control_loop_percent": 61
@@ -93,15 +93,15 @@
     { "id": 46, "stage": 6, "status": "done", "title": "Display the virtual window." },
     { "id": 47, "stage": 6, "status": "done", "title": "Add an event log." },
     { "id": 48, "stage": 6, "status": "active", "title": "Run hundreds of updates." },
-    { "id": 49, "stage": 7, "status": "todo", "title": "Add soil moisture." },
-    { "id": 50, "stage": 7, "status": "todo", "title": "Add tank level." },
-    { "id": 51, "stage": 7, "status": "todo", "title": "Add rain." },
-    { "id": 52, "stage": 7, "status": "todo", "title": "Add pump hysteresis." },
-    { "id": 53, "stage": 7, "status": "todo", "title": "Add low-tank protection." },
-    { "id": 54, "stage": 7, "status": "todo", "title": "Add rain protection." },
-    { "id": 55, "stage": 7, "status": "todo", "title": "Add virtual pump and fan." },
-    { "id": 56, "stage": 7, "status": "todo", "title": "Connect LED and buzzer warnings." },
-    { "id": 57, "stage": 7, "status": "todo", "title": "Add corresponding OLED pages." },
+    { "id": 49, "stage": 7, "status": "done", "title": "Add soil moisture." },
+    { "id": 50, "stage": 7, "status": "done", "title": "Add tank level." },
+    { "id": 51, "stage": 7, "status": "done", "title": "Add rain." },
+    { "id": 52, "stage": 7, "status": "done", "title": "Add pump hysteresis." },
+    { "id": 53, "stage": 7, "status": "done", "title": "Add low-tank protection." },
+    { "id": 54, "stage": 7, "status": "done", "title": "Add rain protection." },
+    { "id": 55, "stage": 7, "status": "done", "title": "Add virtual pump and fan." },
+    { "id": 56, "stage": 7, "status": "active", "title": "Connect LED and buzzer warnings." },
+    { "id": 57, "stage": 7, "status": "active", "title": "Add corresponding OLED pages." },
     { "id": 58, "stage": 8, "status": "todo", "title": "Add normal, hot, dry-soil, low-tank, rain, invalid-data, and communication-loss scenarios." },
     { "id": 59, "stage": 8, "status": "todo", "title": "Define expected commands, mode, alarm, and response time." },
     { "id": 60, "stage": 8, "status": "todo", "title": "Add automatic PASS/FAIL comparison." },
@@ -218,7 +218,7 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 32, 38, 39, 40, 48],
+  "next_tasks": [17, 18, 19, 21, 22, 32, 38, 39, 40, 48, 56, 57, 58, 59, 60],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",
@@ -227,6 +227,7 @@
     "Whether the placeholder runtime tuning constants (stale-data timeout, recovery threshold, max request body size) are acceptable for the real deployment",
     "Acceptable temperature validation range for firmware/src/vertical_slice.cpp (currently a placeholder -40C to 85C)",
     "Whether a spare tact switch (SW1/SW2/SW3) should be wired as a physical emergency-stop input",
-    "The real ESP's IP address/hostname once it is on a reachable network, for AGRICONTROL_ESP_BASE_URL"
+    "The real ESP's IP address/hostname once it is on a reachable network, for AGRICONTROL_ESP_BASE_URL",
+    "Whether firmware/src/irrigation_slice.cpp's NeoPixel color mapping (an interpretation of the manual's ambiguous status-color spec) and simplified single-tone buzzer pattern are acceptable"
   ]
 }

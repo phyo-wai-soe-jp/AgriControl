@@ -1,6 +1,6 @@
 # AgriControl Project State
 
-Last updated: 2026-08-04 JST (Stage 6 FastAPI bridge + simulator, tested)
+Last updated: 2026-08-04 JST (Stage 7 irrigation slice, backend/UI tested)
 
 ## Live Links
 
@@ -44,21 +44,23 @@ Important files:
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`.
 - `firmware/` - PlatformIO / Arduino C++ project for the physical
   ESP32-C3M-TRY board: `main.cpp`, Stage 3 output test environments, a
-  drafted Stage 4 ESP runtime (`env:runtime`), and a Stage 5 first vertical
+  drafted Stage 4 ESP runtime (`env:runtime`), a Stage 5 first vertical
   slice with the safety supervisor wired in (`env:vertical_slice`,
-  temperature only). Unverified by a build in this environment.
-- `backend/` - FastAPI bridge (Stage 6, Branch 3). Actually run and tested
-  here: 12 passing pytest tests plus a live end-to-end smoke test.
-- `simulator/` - website simulator (Stage 6, Branch 2): temperature slider,
-  response display, virtual window/fan, event log. Functionally tested
-  with jsdom; never opened in a real browser.
+  temperature only), and a Stage 7 irrigation slice
+  (`env:irrigation_slice`, soil/tank/rain/pump). Unverified by a build in
+  this environment.
+- `backend/` - FastAPI bridge (Stage 6/7, Branch 3). Actually run and
+  tested here: 17 passing pytest tests plus a live end-to-end smoke test.
+- `simulator/` - website simulator (Stage 6/7, Branch 2): temperature/soil/
+  tank/rain controls, response display, virtual window/fan/pump, event
+  log. Functionally tested with jsdom; never opened in a real browser.
 
 ## Current Progress Snapshot
 
 Baseline progress is intentionally conservative:
 
-- Overall progress: 38%
-- Roadmap execution: 40%
+- Overall progress: 40%
+- Roadmap execution: 50%
 - Branch readiness: 50%
 - Completion gates: 0%
 - Central control-loop coverage: 61%
@@ -68,6 +70,99 @@ These numbers come from the blueprint-derived model in
 not change durable project state until they are exported and committed.
 
 ## Completed Work
+
+Date: 2026-08-04 JST (Stage 7 irrigation slice)
+
+Agent: agent-04-firmware-runtime, agent-05-backend, agent-06-frontend-sim
+(Claude Sonnet 5).
+
+Continuing in roadmap order: Stage 7 extends the temperature-only vertical
+slice to soil moisture, tank level, rain, and pump hysteresis. Same
+asymmetry as every prior session: the backend/simulator side is real,
+executed, tested software; the firmware side is a reviewed C++ port,
+never compiled, because there is still no PlatformIO toolchain or board
+access here. The underlying algorithm for the firmware side is not new,
+though -- it is a direct port of `logic/decision.py` and
+`logic/safety.py`'s irrigation/low-tank rules, which were already proven
+correct by 35 passing host tests back in the Stage 2 session.
+
+Changed:
+
+- Added `firmware/include/irrigation.h`: extends `decision.h`/`safety.h`
+  *without modifying them* (`vertical_slice.cpp` is untouched and still
+  works exactly as before). `FullDecision`/`evaluateFullDecision` add
+  soil-moisture + rain-gated pump hysteresis (roadmap tasks 49/51/52).
+  `FullSafetyResult`/`evaluateFullSafety` add the `EQUIPMENT_PROTECTION`
+  priority tier for low-tank pump protection (roadmap task 53). Rain
+  protection (task 54) is folded into the pump-on condition itself,
+  matching `logic/decision.py`.
+- Added `firmware/src/irrigation_slice.cpp` (`env:irrigation_slice`,
+  roadmap tasks 49-57): validates soil_moisture/water_level_percent/rain
+  (each optional, physically-plausible ranges), runs the full
+  decision+safety pipeline, sets a NeoPixel status color keyed to
+  `alarm_level` (task 56 -- explicit color-mapping interpretation, the
+  manual's spec is ambiguous), sounds a single non-blocking `tone()` on
+  alarm-level changes (task 56 -- simplified from the manual's
+  "confirmation/warning/critical pattern" description specifically to
+  avoid blocking the HTTP handler with `delay()`), and shows soil/tank/
+  pump/fan on an extended OLED page (task 57). **Pump is reported, never
+  physically driven** -- same situation as the fan: no pump GPIO/relay pin
+  is assigned.
+- Extended `backend/app.py`'s `SensorRequest` with optional
+  `soil_moisture`, `water_level_percent`, `rain`. Only fields the caller
+  actually sent are forwarded -- an omitted field means "no reading
+  available" (holds previous pump state on the ESP), not "assume zero".
+  Added 5 new pytest tests (17 total, all passing): field omission,
+  all-four-together, partial fields, rain's 0/1 restriction, and
+  non-numeric rejection.
+- Extended `simulator/index.html` with soil moisture / tank level sliders
+  and a rain toggle, each gated by its own "send this field" checkbox, and
+  added a pump indicator next to the existing fan indicator. Added 5 new
+  jsdom scenarios (all passing) plus a regression re-check confirming the
+  original 6 Stage 6 scenarios still pass unchanged.
+
+Evidence:
+
+- `python3 -m pytest backend/tests/ -v` -> 17 passed (up from 12).
+- jsdom functional tests: 5 new irrigation-UI scenarios passing, plus a
+  regression re-check of the original 6 Stage 6 scenarios (window-angle
+  scaling, error handling) -- all still pass.
+- `firmware/include/irrigation.h` cross-checked line-by-line against
+  `logic/safety.py`'s low-tank branch (`tank_level_percent < 15 -> pump
+  off, fan/window pass through, overrides=["LOW-TANK"] if requested_pump`)
+  to confirm the C++ port is exact, not just similar. **No `pio run`
+  build** -- same caveat as every firmware file so far.
+
+Status updates:
+
+- Roadmap tasks 49, 50, 51, 52, 53, 54, 55 marked `done` -- justified by
+  the combination of (a) a proven-correct algorithm from Stage 2's host
+  tests, (b) a reviewed, line-by-line-verified C++ port, (c) real tested
+  bridge support, and (d) real tested simulator UI. This is the same bar
+  Stage 6 was held to.
+- Roadmap tasks 56, 57 marked `active` -- NeoPixel/buzzer/OLED code exists
+  but is physical-output-only with no possible host-side test; kept to the
+  stricter "unverified C++" standard used for Stage 3/4/5 firmware.
+- No branch status changes: branches 2, 3, 6, 7, 8, 9, 10 were already
+  `implemented` from prior sessions and this work doesn't newly cross a
+  threshold for any of them; branch 11 (Physical outputs) stays `drafted`
+  since the new NeoPixel/buzzer/OLED code is unverified.
+
+Blockers / open questions (tracked in `data/agent-coordination.json`):
+
+1. Pump and fan GPIO/relay pin assignment -- still the core blocker for
+   any *physical* irrigation actuation, unchanged from earlier sessions.
+2. Whether the NeoPixel color mapping and single-tone buzzer pattern in
+   `irrigation_slice.cpp` are acceptable, or need revision.
+3. Everything already open from Stage 4/5/6 (WiFi credentials, ESP IP,
+   emergency-stop switch, tuning constants) still applies.
+
+Next task: once the board and pump/fan pins are decided, build
+`env:irrigation_slice` and test soil/tank/rain scenarios against real
+hardware. Until then, the highest-value remaining software-only work is
+Stage 8 (scenario testing) or Stage 9 (closed-loop simulation), both of
+which can build on the now-tested backend/simulator the same way Stage 7
+did.
 
 Date: 2026-08-04 JST (Stage 6 FastAPI bridge + simulator, tested)
 
@@ -746,17 +841,20 @@ These must not be guessed:
 - Whether `simulator/index.html`'s virtual window actually looks right in a
   real browser (only jsdom-verified so far).
 - Whether `backend/app.py`'s CORS `allow_origins=["*"]` needs tightening.
+- Whether `firmware/src/irrigation_slice.cpp`'s NeoPixel color mapping and
+  single-tone buzzer pattern (both explicit interpretations of the
+  manual's ambiguous spec) are acceptable.
 
 Resolved: exact board, complete pin map, OLED/NeoPixel/buzzer wiring
 (sourced from the owner-provided `ESP32-C3M-TRY-R1-20230701.pdf`); firmware
 toolchain (PlatformIO, Arduino framework, C++ -- not MicroPython); servo
 power stability (roadmap task 23); the safety supervisor is now ported to
-firmware and wired into `vertical_slice.cpp` (its emergency-stop and
-controller-fault *inputs* remain open, tracked separately above). The
-FastAPI bridge and website simulator (Stage 6) are built and genuinely
-tested (12 passing pytest tests, a live end-to-end smoke test, and 6
-passing jsdom scenarios) -- the only gap is the real ESP. See Completed
-Work above.
+firmware and wired into `vertical_slice.cpp`/`irrigation_slice.cpp` (its
+emergency-stop and controller-fault *inputs* remain open, tracked
+separately above). The FastAPI bridge and website simulator (Stage 6/7)
+are built and genuinely tested (17 passing pytest tests, a live end-to-end
+smoke test, and 11 passing jsdom scenarios) -- the only gap is the real
+ESP. See Completed Work above.
 
 ## Next Work
 
@@ -768,13 +866,13 @@ Stage 1 (tasks 1-4) is fully done. Stage 3 (Local physical outputs): servo
 tasks (20, 23) are done from direct hardware observation; OLED/NeoPixel/
 buzzer/combined-output test environments are drafted in `firmware/`
 (PlatformIO) but unverified by a build or hardware run. Stage 4 (ESP
-runtime, tasks 24-30) and Stage 5's first vertical slice (tasks 31/33-37)
-are drafted in `firmware/src/runtime.cpp`, `firmware/src/vertical_slice.cpp`,
-and `include/`, also unverified -- none of it has been through `pio run`.
-Stage 6 (tasks 41-47) is done and genuinely tested (`backend/`,
-`simulator/`) -- the exception among Stage 3-6 work, since it doesn't need
-the physical board to build or run, only to reach the real ESP for the
-last mile.
+runtime, tasks 24-30), Stage 5's first vertical slice (tasks 31/33-37), and
+most of Stage 7 (tasks 49-55) are drafted in `firmware/src/runtime.cpp`,
+`vertical_slice.cpp`, `irrigation_slice.cpp`, and `include/`, unverified by
+a build -- except that tasks 49-55 also have real backend/simulator
+evidence, unlike 24-40. Stage 6 (tasks 41-47) is done and genuinely tested
+(`backend/`, `simulator/`) -- software-only, doesn't need the physical
+board to build or run, only to reach the real ESP for the last mile.
 
 Follow the blueprint order. The next open tasks are:
 
@@ -802,6 +900,13 @@ Follow the blueprint order. The next open tasks are:
    `backend/tests/`'s live smoke test against the real board -- closes
    roadmap task 48 fully and opens `simulator/index.html` in a real browser
    (roadmap tasks 43-46 are jsdom-verified only so far).
+7. Get `env:irrigation_slice` building alongside `env:vertical_slice`
+   (roadmap tasks 49-57) once the toolchain/WiFi/pin questions are
+   answered; confirm the NeoPixel color mapping and buzzer pattern.
+8. Consider Stage 8 (scenario testing) or Stage 9 (closed-loop simulation)
+   as the next software-only work -- both can build on the now-tested
+   `backend/`/`simulator/` the same way Stage 7 did, without waiting on
+   hardware.
 
 Before starting a task, use the matching prompt in
 `docs/PROMPT_TEST_LIBRARY.md` and the matching verification prompt before
