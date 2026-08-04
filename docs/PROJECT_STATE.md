@@ -71,6 +71,76 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (Stage 8 scenario testing, backend/tested)
+
+Agent: agent-05-backend (Claude Sonnet 5).
+
+Continuing in roadmap order after the buzzer-fix session below: Stage 8
+("Scenario testing") is pure software, like Stage 6/7, so it could be built
+and genuinely executed here, not just reviewed.
+
+Changed:
+
+- Added `backend/tests/test_scenarios.py` (roadmap tasks 58-60): 7 preset
+  scenarios (normal, hot, dry_soil, low_tank, rain, invalid_data,
+  communication_loss) run end-to-end through the FastAPI bridge
+  (`POST /api/temperature`) against a fake ESP responder. Unlike prior
+  fake-ESP test doubles in `backend/tests/test_app.py`, which hardcode a
+  small mirror of the temperature-only rule, this one calls the *real*
+  `logic/decision.py` (`evaluate_decision`) and `logic/safety.py`
+  (`evaluate_safety`) functions directly -- the same host-tested algorithm
+  `firmware/include/decision.h`/`safety.h`/`irrigation.h` are a verified
+  line-by-line port of -- so each scenario's expected commands/mode/alarm
+  come from proven logic, not hand-guessed values.
+  - `low_tank` specifically exercises the EQUIPMENT_PROTECTION override
+    (decision engine requests the pump on from dry soil; safety supervisor
+    forces it off because the tank is below 15%).
+  - `rain` exercises the rain-gates-pump rule (dry soil alone would trigger
+    the pump; rain=1 blocks it, holding the previous state instead).
+  - `invalid_data` and `communication_loss` exercise the bridge's protocol
+    layer (502 + event log) for a rejected message and an unreachable ESP,
+    matching `backend/app.py`'s existing error handling.
+  - Response time (task 59) is checked against a generous 1-second budget
+    on the in-process bridge call -- real evidence of the bridge's own
+    performance, explicitly *not* evidence of the physical ESP's real
+    round-trip time, which needs the real board.
+  - PASS/FAIL (task 60) is the parametrized pytest assertions themselves;
+    each scenario reports as its own pass/fail case.
+
+Evidence:
+
+- `python3 -m pytest backend/tests/ -v` -> 24 passed (17 prior + 7 new).
+- `python3 -m unittest discover -s tests` -> 35 passed, unchanged (proves
+  the scenario tests didn't require touching the already-proven logic
+  layer).
+- Recomputed `data/progress-baseline.json`'s dashboard metrics by hand
+  using the exact same weighted-average formula as
+  `web-build/index.html`'s `calcTaskProgress`/`calcBranchProgress`/
+  `calcLoopProgress`, then confirmed the dashboard's own live jsdom
+  rendering produces identical numbers before committing (same discipline
+  established after the earlier "dashboard shows wrong numbers" incident).
+
+Status updates:
+
+- Roadmap tasks 58, 59, 60 marked `done` -- real executed, passing tests
+  against the real decision/safety logic, same bar as Stage 6/7's software
+  work.
+- Branch 13 (Testing) advanced `drafted` -> `implemented` -- first real
+  scenario/integration-style test coverage, matching the bar branches 6-10
+  were already held to.
+- `data/progress-baseline.json` metrics: overall 40% -> 42%, roadmap 50% ->
+  54% (32/82 -> 35/82 tasks done), branches 50% -> 52%, control loop 61% ->
+  63% (loop steps 10 and 12 both reference branch 13).
+  `updated_at` bumped to `2026-08-04T14:00:00+09:00`; `web-build/index.html`'s
+  `BASELINE_VERSION` bumped to match, per the discipline in `AGENTS.md`.
+
+Next task: Stage 9 (closed-loop simulation: actuator feedback, delays,
+failed starts, stuck faults, servo mismatch) is the next stage in roadmap
+order, but it's mostly about *simulating hardware failure modes* which may
+be better suited to the simulator/backend pairing than pure Python --
+worth scoping carefully before starting. Tasks 17-19/21/22/32/38-40/48/56/57
+remain blocked on real board access, unchanged.
+
 Date: 2026-08-04 JST (buzzer fix ported from owner's other ESP32-C3M-TRY project)
 
 Agent: agent-04-firmware-runtime (Claude Sonnet 5).
