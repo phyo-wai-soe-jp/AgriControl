@@ -71,6 +71,106 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (MQTT hardware-verification harness -- ad-hoc, not a numbered roadmap task)
+
+Agent: agent-04-firmware-runtime, agent-02-hardware (Claude Sonnet 5).
+
+Following the live hardware session below (verifying LED/servo/buzzer on
+a *different* project's firmware via `esp32.phyowaisoe.com`), the owner
+pointed at a second, private repo -- `Full-Control-on-ESP-32-on-VPS` --
+and asked for AgriControl's own firmware to be made runnable through that
+same remote channel, "if you can prove this design will have good
+approach to the mission."
+
+**The case for this, made explicit before building anything**:
+
+1. It does not weaken the blueprint's core rule ("no interface may bypass
+   the central control loop"). The ESP stays the sole decision-making
+   authority -- MQTT is a transport swap for sensor-in/state-out, exactly
+   analogous to `runtime.cpp`'s existing HTTP transport, not a new place
+   where decisions get made.
+2. It reuses `firmware/include/irrigation.h` (itself built on `decision.h`/
+   `safety.h`, both already proven by 35+ host tests) completely
+   unmodified. Zero risk of logic drift between this harness and
+   `irrigation_slice.cpp`.
+3. It closes the single most-repeated caveat in this entire project's
+   history: "no PlatformIO toolchain, no board, no WiFi network reachable
+   from here." AgriControl's existing local-HTTP design assumes the
+   tester is on the same local network as the board -- true for the
+   owner, never true for an AI agent with no physical presence. This is
+   the first mechanism that could make "verified by me directly" actually
+   possible for *AgriControl's own* code, not just corroborating evidence
+   from a different project's firmware.
+4. It is narrowly scoped and fully reversible: one new `.cpp` file, one
+   new PlatformIO environment, one new gitignored secrets file. Nothing
+   in `runtime.cpp`, `vertical_slice.cpp`, `irrigation_slice.cpp`, or any
+   existing environment changes. Deleting `mqtt_test_harness.cpp` removes
+   this entirely.
+5. Different justification than Stage 12 task 77 ("Add MQTT"), which is
+   about a *product* feature (remote access, multi-device, cloud). This
+   is a *development-time verification aid* -- closer in spirit to Stage
+   8's fake-ESP scenario tests (real logic, not-the-real-transport) than
+   to a permanent architecture choice. No Stage 12 task is marked done
+   from this, and the local-HTTP design remains AgriControl's real
+   architecture.
+
+Changed:
+
+- Added `firmware/src/mqtt_test_harness.cpp` (`env:mqtt_test_harness`):
+  a near-duplicate of `irrigation_slice.cpp` with `WebServer` replaced by
+  `PubSubClient` (MQTT) -- same validation, same `evaluateFullDecision`/
+  `evaluateFullSafety` calls, same servo/NeoPixel/buzzer/OLED actuation,
+  field-for-field. Subscribes `agricontrol/sensor`, publishes
+  `agricontrol/state` -- topics deliberately separate from the other
+  project's `esp32/command`/`esp32/state`, which belong to a different
+  firmware's LED/servo/sound command vocabulary this file has no
+  relationship to.
+- Added `firmware/include/mqtt_secrets.h.example` and gitignored
+  `firmware/include/mqtt_secrets.h` (MQTT broker identity), following the
+  same pattern as `secrets.h`/`secrets.h.example` for WiFi.
+- Added `firmware/platformio.ini`'s `[env:mqtt_test_harness]`, adding
+  `knolleary/PubSubClient` only for this environment
+  (`lib_deps = ${env.lib_deps} \n knolleary/PubSubClient`), not globally.
+- Added `tools/mqtt_hardware_verify.py`: a Python MQTT client (matching
+  the `paho-mqtt` library the VPS's own `server/app.py` uses) that
+  publishes one simulated sensor reading and waits for the board's real
+  response -- the tool that would actually be used to verify AgriControl's
+  compiled firmware once the remaining access gaps below are resolved.
+  `build_payload()` is pure logic, genuinely tested (see Evidence); the
+  network I/O around it is not, and cannot be, executed in this
+  environment.
+- Added `tests/test_mqtt_hardware_verify.py`: 4 passing tests for
+  `build_payload()` (temperature-only, all-fields, partial-fields, and
+  specifically that `rain=0.0` isn't dropped as falsy -- the same bug
+  class `backend/app.py`'s `is not None` checks already guard against).
+
+Evidence:
+
+- `python3 -m unittest discover -s tests` -> 88 passed (up from 84).
+- `python3 -m pytest backend/tests/` -> 24 passed, unaffected.
+- **Not** built, flashed, or run against real hardware -- same caveat as
+  every other firmware file in this project. This session produced a
+  reviewed, ready-to-flash design, not verified working code.
+
+What this does *not* resolve (still open, tracked as
+`firmware/README.md` questions 9-10):
+
+1. No MQTT broker credentials exist yet for this harness or for
+   `tools/mqtt_hardware_verify.py` to actually connect -- needs a
+   distinct client identity scoped to `agricontrol/#` topics on the
+   Mosquitto broker behind `esp32.phyowaisoe.com`, not a reused device
+   credential from the other project.
+2. No confirmed way to flash this onto the physical board remotely --
+   `pio run -e mqtt_test_harness -t upload` still needs either the owner
+   doing it directly, or some SSH-reachable machine with the board
+   attached via USB that this environment doesn't have access to.
+
+Until both are resolved, this stays exactly where every other firmware
+file in this project sits: reviewed, not verified. Recorded here in full
+because the *reasoning* for building it is itself part of the durable
+record -- if it turns out to be the wrong call, that reasoning is what
+should get revisited, not just the code.
+
 Date: 2026-08-04 JST (live hardware verification via esp32.phyowaisoe.com, not AgriControl's own firmware)
 
 Agent: agent-02-hardware (Claude Sonnet 5).

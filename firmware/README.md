@@ -135,6 +135,17 @@ fill in real values. `secrets.h` is gitignored and must never be committed.
   `vertical_slice.cpp`: no pump GPIO/relay pin has been assigned. Read the
   file header before assuming this drives real irrigation hardware.
 
+- `src/mqtt_test_harness.cpp` (`env:mqtt_test_harness`) - **not a numbered
+  roadmap task, not AgriControl's chosen architecture.** A near-duplicate
+  of `irrigation_slice.cpp` with `WebServer` swapped for `PubSubClient`
+  (MQTT), so a tester with no local-network access to the board (e.g. an
+  AI agent) can still exercise the real `irrigation.h` logic remotely
+  through an already-working self-hosted Mosquitto broker. Same
+  validation/decision/safety/actuation pipeline, unchanged; only the
+  transport differs. Needs `include/secrets.h` and a new
+  `include/mqtt_secrets.h` (copy `mqtt_secrets.h.example`). Read the file
+  header before assuming this is meant to replace the local-HTTP design.
+
 ## Resolved this session
 
 - Servo power stability (roadmap task 23): confirmed by direct hardware
@@ -181,3 +192,14 @@ generic eval board, not the AgriControl greenhouse build:
    blocking `delay()` calls in the HTTP handler -- acceptable, or is a
    real multi-beep pattern (needing an async/non-blocking beep scheduler)
    worth building?
+9. For `env:mqtt_test_harness`: a distinct MQTT broker identity (host,
+   username, password) with publish/subscribe rights scoped to the
+   `agricontrol/#` topics on the self-hosted Mosquitto broker behind
+   `esp32.phyowaisoe.com` -- not a reused device credential from any other
+   project. Needed both on the firmware side (`include/mqtt_secrets.h`)
+   and for `tools/mqtt_hardware_verify.py` to actually publish test
+   readings and read back real responses.
+10. Whether there's any way to flash new firmware onto the physical board
+    remotely (e.g. an SSH-reachable machine with it attached via USB), or
+    whether every build in this project needs the owner to do the actual
+    `pio run -t upload` step by hand.

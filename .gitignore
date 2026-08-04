@@ -3,4 +3,5 @@ tmp/
 __pycache__/
 *.pyc
 firmware/include/secrets.h
+firmware/include/mqtt_secrets.h
 firmware/.pio/
