@@ -71,6 +71,79 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-04 JST (live hardware verification via esp32.phyowaisoe.com, not AgriControl's own firmware)
+
+Agent: agent-02-hardware (Claude Sonnet 5).
+
+The owner pointed at `https://esp32.phyowaisoe.com`, a live remote-control
+panel (`GET /api/state` read-only, `POST /api/command` with an `x-pin`
+header) for the physical ESP32-C3M-TRY board, currently running the
+*separate* `Full-control-on-ESP32` firmware, not AgriControl's own
+compiled code. This is the first genuinely first-hand interaction with the
+real board in this environment (everything before this was either host
+logic, or evidence the owner reported secondhand).
+
+**Confirmed the board is online and live right now**: `GET /api/state`
+returned real, moving sensor readings (temperature ~31.8-32.1C, humidity
+~54-57%, ambient light ~0.15 normalized) with a current `updatedAt`
+timestamp -- not stale/cached data.
+
+Sent four commands via `POST /api/command` and confirmed each was
+genuinely applied (not just accepted) by re-reading `/api/state` afterward:
+
+- `{"command":"servo","angle":90}` -> `servoAngle` reported back as
+  exactly `90`.
+- `{"command":"sound","frequency":660,"duration":3000}` -> `sound`
+  reported `true` while active (a short first attempt at 400ms was missed
+  entirely, since it had already finished by the time of the follow-up
+  read -- the retry used a longer duration specifically to catch the
+  `true` state, not just get a 200 from the API).
+- `{"command":"set","r":0,"g":45,"b":0,"led":-1}` (AgriControl's own
+  "normal" NeoPixel status color) -> `led0`/`led1`/`led2` reported back
+  as `11520`, exactly `(0<<16)|(45<<8)|0` -- the packed color math
+  matches precisely, not just "some color changed."
+- `{"command":"display_text","text":"AgriControl hw check OK"}` -> `note`
+  field reported the exact text back.
+
+Then returned the board to a neutral state: `{"command":"off"}` (LEDs
+off) and `{"command":"servo","angle":10}` (AgriControl's own
+`WINDOW_CLOSED_DEG`, a sensible resting position). Attempting to clear
+the OLED note via an empty `text` value was rejected by the Worker
+("Bad display settings") even though the firmware itself treats empty
+text as "clear" (`main.cpp`'s `noteActive = noteText.length() > 0`) --
+a discrepancy in that project's own Worker validation, not AgriControl's
+concern to fix. The harmless leftover note was left in place rather than
+fought further.
+
+**What this does and does not prove**: this genuinely confirms the LEDC
+PWM buzzer approach ported into AgriControl last session (`irrigation_slice.cpp`,
+`test_buzzer.cpp`, `test_all_outputs.cpp`) produces real, audible-range
+PWM output on this exact chip -- the single largest open question about
+that port. It also confirms the servo reaches commanded angles precisely
+and the NeoPixels accept exact RGB values, using the same libraries
+(ESP32Servo, Adafruit_NeoPixel) AgriControl's own firmware uses on the
+same pins. It does **not** prove AgriControl's own compiled firmware
+works -- this ran a different project's `main.cpp`, built with a
+different OLED library (Adafruit_SSD1306+GFX vs. AgriControl's U8g2) and
+no decision engine, safety supervisor, or HTTP `/sensor` endpoint at all.
+No roadmap task status changed from this -- Stage 3's tasks 17-19/21
+still require AgriControl's *own* firmware to actually be flashed and
+observed before they can move past `active`, per the standard already
+applied consistently everywhere else in this project. Recorded here as
+strong corroborating evidence, not roadmap evidence.
+
+Also noteworthy: the live ambient temperature (~32C) sits inside
+AgriControl's own "fan on, window half open" band (28-35C per
+`logic/decision.py`'s `TEMP_FAN_ON_ABOVE`/`TEMP_WINDOW_FULL_ABOVE`) --
+real-world confirmation that these placeholder thresholds are at least in
+a physically plausible range for wherever this board actually sits, not
+just internally consistent numbers.
+
+Next task: this doesn't change what's next -- Stage 3's output tests
+still need AgriControl's own `env:test_oled`/`test_neopixel`/
+`test_buzzer`/`test_all_outputs` flashed via PlatformIO and observed, not
+just this other firmware exercised through its remote panel.
+
 Date: 2026-08-04 JST (Stage 4/5 protocol: staleness, recovery, message validation, host/tested)
 
 Agent: agent-03-logic (Claude Sonnet 5).
