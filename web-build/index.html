@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-05T12:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-05T14:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1945,20 +1945,20 @@
         "20": "done",
         "21": "done",
         "23": "done",
-        "24": "active",
+        "24": "done",
         "25": "done",
-        "26": "active",
+        "26": "done",
         "27": "done",
         "28": "done",
-        "29": "active",
-        "30": "active",
-        "31": "active",
+        "29": "done",
+        "30": "done",
+        "31": "done",
         "32": "done",
-        "33": "active",
-        "34": "active",
-        "35": "active",
-        "36": "active",
-        "37": "active",
+        "33": "done",
+        "34": "done",
+        "35": "done",
+        "36": "done",
+        "37": "done",
         "38": "done",
         "39": "done",
         "40": "done",
@@ -1977,8 +1977,8 @@
         "53": "done",
         "54": "done",
         "55": "done",
-        "56": "active",
-        "57": "active",
+        "56": "done",
+        "57": "done",
         "58": "done",
         "59": "done",
         "60": "done",
@@ -2010,7 +2010,7 @@
         "14": "implemented"
       },
       gates: {},
-      notes: "Pure-software roadmap work (Stages 2, 6-10) is genuinely executed and tested (logic/, backend/, simulator/). Firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability) -- all 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, was found and fixed). env:irrigation_slice was flashed and tested directly via curl against its own local HTTP server: startup safe-state, normal automatic operation matching logic/decision.py exactly, DATA-STALE safety-override-and-recovery, LOW-TANK equipment protection, and invalid-temperature rejection all confirmed correct on real hardware (task 32 done, branch 5 implemented). A 300-request endurance test against the physical board had zero failures (task 48 done). Stage 3's individual output tests (OLED, NeoPixel, buzzer, all together) were flashed and the owner directly confirmed all working (tasks 17/18/19/21 done, branch 11 implemented). A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) enables remote testing without local-network access to the board. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
+      notes: "Major firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability). All 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, found and fixed). env:irrigation_slice was flashed and extensively tested directly via curl against its own local HTTP server, and with the owner watching/listening: startup safe-state, all three window angles (10/90/170), DATA-STALE and LOW-TANK safety overrides, invalid-value and oversized-request rejection, the specific alarm-level NeoPixel colors (blue/yellow/green) and buzzer tones, correct OLED content, and a directly-observed servo swing all confirmed correct on real hardware. A 300-request endurance test had zero failures. This closes roadmap tasks 17/18/19/21/24/26/29-37/32/48/56/57 with first-party hardware evidence (branches 5 and 11 advanced to implemented). Stage 3-5's remaining C++ was 'reviewed, never compiled' for the whole project's history until this session. A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) also enables remote testing without local-network access to the board. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned; that plus the emergency-stop/controller-fault placeholders are the main remaining hardware gaps. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

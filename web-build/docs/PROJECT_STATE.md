@@ -71,6 +71,123 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (ten more roadmap tasks closed: Stage 4/5's shared infrastructure, proven via irrigation_slice.cpp)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+Directly following the tasks 56/57 session: noticed that several Stage 4
+("ESP runtime") and Stage 5 ("first vertical slice") tasks were still
+`active` even though `irrigation_slice.cpp` -- which had by this point
+been extensively tested live on real hardware -- shares the exact same
+asynchronous runtime, event system, HTTP server, request validation,
+window-command calculation, servo actuation, OLED display, and JSON
+response code as `runtime.cpp`/`vertical_slice.cpp`. Filled two remaining
+test gaps, then closed all of them with the same "irrigation_slice.cpp is
+a strict superset" reasoning already used for task 32.
+
+Gaps filled with fresh real-hardware tests:
+
+- **Window angle 170 (task 34's full range)**: sent temperature=40C,
+  confirmed `window_angle: 170, fan: true` -- the >35C branch, not
+  previously exercised on this hardware (only 10 and 90 had been).
+- **Request-size limit (task 30)**: sent a 2264-byte body (over the
+  2048-byte `kMaxRequestBodyBytes` limit) -- got HTTP 413, confirming the
+  limit is enforced, not just present in the source.
+- **Servo motion, directly observed (task 35)**: after the 170-degree
+  reading, sent a cold reading (window should return to 10); asked the
+  owner to watch the physical servo -- confirmed it visibly swung from
+  170 to 10 ("yes"). The clearest, most direct piece of hardware evidence
+  gathered this session -- an actual described physical motion, not just
+  a JSON field matching an expectation.
+- **Temperature-only request (task 31's Stage 5 scope)**: confirmed
+  `irrigation_slice.cpp` still handles a request with only `temperature`
+  correctly (also re-confirmed the `IRRIGATION-HOLD` rule-name quirk
+  found in the previous session, on a second, independent request).
+
+One anomaly noted honestly: between two of these tests, the board's
+`isStartup` state reappeared (a `STARTUP` override on a request that
+should have been well past that point), meaning the board silently reset
+at some point without any visible cause. Not investigated further --
+serial capture remains unreliable in this environment for the reasons
+noted in the earlier MQTT-harness session, and the retry-with-a-warm-up
+pattern already established handled it without needing to know why.
+Recorded here as an open question, not swept under the rug.
+
+Status updates:
+
+- Roadmap tasks 24 (async runtime), 26 (event system), 29 (HTTP server),
+  30 (request-size/validation limits), 31 (temperature-only scope), 33
+  (message validation), 34 (window command), 35 (servo command), 36
+  (OLED reason display), and 37 (JSON response) all marked `done` -- ten
+  tasks in one entry, all justified by the same file
+  (`irrigation_slice.cpp`) that was already extensively tested this
+  session, not by newly testing `runtime.cpp`/`vertical_slice.cpp`
+  themselves (which remain compiled-only, unflashed in their own right --
+  see the caveat already recorded for task 32).
+- No branch status change -- branches 4/5/7/8/9/10/11/12 were already
+  `implemented` from this session or earlier ones.
+- `data/progress-baseline.json` metrics: overall 53% -> 54%, roadmap 77%
+  -> 84% (59/82 -> 69/82 tasks done; branches/control-loop unchanged, no
+  branch crossed a new threshold). `updated_at` bumped to
+  `2026-08-05T14:00:00+09:00`; `web-build/index.html`'s `BASELINE_VERSION`
+  bumped to match. Notes field rewritten again for concision.
+
+Next task: only tasks 22 (needs the pump/fan pin decision) and 70
+(intentionally gated on runtime stability) remain reachable without a
+Stage 11/12 scope decision. This is very close to the natural end of what
+this project's software-and-firmware work can do without the owner
+making those decisions or acquiring additional physical sensors/actuators.
+
+Date: 2026-08-05 JST (roadmap tasks 56/57 closed: irrigation_slice.cpp's alarm colors/tones/OLED confirmed live)
+
+Agent: agent-02-hardware, agent-04-firmware-runtime (Claude Sonnet 5).
+
+Directly following the Stage 3 output-test milestone: reflashed
+`env:irrigation_slice` (which the Stage 3 tests had overwritten) and, with
+the owner watching and listening in real time, walked it through three
+reachable alarm states via `curl` against `192.168.0.11/sensor`:
+
+1. First message (`isStartup`): `alarm_level: startup_indication`.
+   Owner confirmed the NeoPixels were blue and the OLED showed the
+   expected TEMP/WIN, SOIL, TANK, and PUMP/FAN lines ("yeah all right").
+2. Low-tank / stale-data warning: `alarm_level: warning`. Owner confirmed
+   yellow ("see it").
+3. Fresh, in-range reading: `mode: automatic`, `alarm_level: normal`.
+   Owner confirmed green ("good").
+4. Asked directly whether the buzzer was also audible at each alarm
+   change (a distinct pitch per severity, non-blocking, only firing on
+   transitions) -- owner confirmed ("heard it").
+
+**Not tested**: `critical` (red LED, 440Hz tone) is not reachable through
+this build's HTTP interface at all -- `kEmergencyStopActive` and
+`kControllerFaultActive` are still hardcoded `false` placeholders in
+`irrigation_slice.cpp` (open owner questions, unchanged for many
+sessions), so there is no sensor input that can trigger it. This is an
+honest gap, not an oversight in testing.
+
+Status updates:
+
+- Roadmap tasks 56 ("Connect LED and buzzer warnings") and 57 ("Add
+  corresponding OLED pages") marked `done` -- direct owner observation of
+  the specific color mapping, tone-on-change behavior, and OLED content
+  this project has been carrying as an "explicit interpretation, not
+  confirmed" caveat since Stage 7 was first drafted.
+- No branch status change -- branches 10/11/12 (Actuator abstraction,
+  Physical outputs, Observability) were already `implemented` from
+  earlier sessions and this doesn't cross a new threshold for any of
+  them.
+- `data/progress-baseline.json` metrics: overall 52% -> 53%, roadmap 76%
+  -> 77% (57/82 -> 59/82 tasks done; branches/control-loop unchanged).
+  `updated_at` bumped to `2026-08-05T13:00:00+09:00`;
+  `web-build/index.html`'s `BASELINE_VERSION` bumped to match.
+
+Next task: task 22 ("Connect hardcoded decisions to outputs") and task 70
+(watchdog, intentionally gated) are the only roadmap items left in
+`next_tasks`. Task 22 needs the pump/fan GPIO/relay decision before it can
+mean anything physically -- everything else reachable without that
+decision or without Stage 11/12 scope choices has now been closed this
+session.
+
 Date: 2026-08-05 JST (Stage 3 output tests closed: owner-confirmed on real AgriControl firmware)
 
 Agent: agent-02-hardware, agent-04-firmware-runtime (Claude Sonnet 5).
