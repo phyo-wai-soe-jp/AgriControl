@@ -1,15 +1,19 @@
 import unittest
 
+from logic.decision import evaluate_decision
 from logic.protocol import (
     DATA_STALE_TIMEOUT_MS,
     RECOVERY_CONSECUTIVE_VALID_REQUIRED,
     RecoveryTracker,
     evaluate_tick,
+    is_data_stale_for_safety,
     is_stale,
     is_valid_sequence,
     is_valid_temperature_c,
 )
+from logic.safety import SafetyPriority, evaluate_safety
 from logic.system_state import CommunicationState, Mode, SystemState
+from tests.helpers import make_sensors
 
 
 class TestSequenceValidation(unittest.TestCase):
@@ -167,6 +171,83 @@ class TestEvaluateTickFullRecoveryCycle(unittest.TestCase):
         result = evaluate_tick(state, self.recovery, any_stale=True)
         self.assertEqual(result.system_state.communication_state, CommunicationState.DATA_STALE)
         self.assertEqual(self.recovery.consecutive_valid, 0)
+
+
+class TestIsDataStaleForSafety(unittest.TestCase):
+    """Roadmap Gate A: 'Recovery requires stable valid messages.' Direct
+    unit coverage for the exact bug found live on real hardware
+    2026-08-05 -- firmware computed its safety supervisor's dataStale
+    input from the raw communication state instead of this mode-based
+    signal, so automatic operation resumed after 1 valid message instead
+    of the required 5."""
+
+    def test_automatic_is_not_stale(self):
+        self.assertFalse(is_data_stale_for_safety(Mode.AUTOMATIC))
+
+    def test_warning_is_stale(self):
+        self.assertTrue(is_data_stale_for_safety(Mode.WARNING))
+
+    def test_recovery_is_still_stale(self):
+        # The exact case the firmware bug got wrong: RECOVERY means
+        # communication is fresh again but not yet confirmed stable --
+        # still not safe to resume automatic operation.
+        self.assertTrue(is_data_stale_for_safety(Mode.RECOVERY))
+
+    def test_ready_and_boot_are_not_stale(self):
+        self.assertFalse(is_data_stale_for_safety(Mode.READY))
+        self.assertFalse(is_data_stale_for_safety(Mode.BOOT))
+
+
+class TestFullRecoveryGatingIntegration(unittest.TestCase):
+    """Roadmap Gate A, full pipeline: mirrors exactly what was verified
+    live on the physical board 2026-08-05 -- after a stale gap, automatic
+    operation must not resume until RECOVERY_CONSECUTIVE_VALID_REQUIRED
+    (5) consecutive valid messages have arrived, using is_data_stale_for_
+    safety() as the corrected wiring between evaluate_tick()'s mode and
+    evaluate_safety()'s data_stale input.
+    """
+
+    def _process_message(self, state, recovery, any_stale):
+        """One simulated request cycle: tick() first (mirrors the ESP
+        detecting staleness before a message arrives), then a decision +
+        safety evaluation using the *current* mode as the safety input --
+        exactly the corrected firmware wiring, not the buggy original."""
+        tick_result = evaluate_tick(state, recovery, any_stale)
+        state = tick_result.system_state
+
+        sensors = make_sensors(temperature=25.0, soil_moisture=50.0, rain=0)
+        decision = evaluate_decision(sensors, previous_pump_requested=False, decision_id="int")
+        data_stale = is_data_stale_for_safety(state.mode)
+        safety = evaluate_safety(decision, tank_level_percent=80.0, data_stale=data_stale)
+
+        recovery.record_valid()
+        return state, safety
+
+    def test_exactly_five_messages_required_before_automatic_resumes(self):
+        state = SystemState(
+            mode=Mode.AUTOMATIC, communication_state=CommunicationState.DATA_ACTIVE,
+            alarm_level="normal", boot_id="b1",
+        )
+        recovery = RecoveryTracker()
+
+        # Message 1: staleness detected (any_stale=True) -- must NOT be automatic.
+        state, safety = self._process_message(state, recovery, any_stale=True)
+        self.assertEqual(safety.applied_priority, SafetyPriority.SAFETY)
+
+        # Messages 2-5: fresh data arriving (any_stale=False from here on),
+        # but still within the recovery streak -- still must NOT be automatic.
+        for _ in range(RECOVERY_CONSECUTIVE_VALID_REQUIRED - 1):
+            state, safety = self._process_message(state, recovery, any_stale=False)
+            self.assertEqual(
+                safety.applied_priority, SafetyPriority.SAFETY,
+                f"resumed automatic too early, after only {recovery.consecutive_valid} valid message(s)",
+            )
+
+        # The (RECOVERY_CONSECUTIVE_VALID_REQUIRED + 1)-th message: stable
+        # communication is now confirmed -- automatic operation may resume.
+        state, safety = self._process_message(state, recovery, any_stale=False)
+        self.assertEqual(safety.applied_priority, SafetyPriority.AUTOMATIC_OPERATION)
+        self.assertEqual(state.mode, Mode.AUTOMATIC)
 
 
 if __name__ == "__main__":

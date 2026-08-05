@@ -130,3 +130,26 @@ def evaluate_tick(system_state: SystemState, recovery: RecoveryTracker, any_stal
         state = state.transition_to(Mode.AUTOMATIC)
 
     return TickResult(system_state=state, events=events)
+
+
+def is_data_stale_for_safety(mode: Mode) -> bool:
+    """The correct `data_stale` input for `logic.safety.evaluate_safety()`
+    (roadmap Gate A: "Recovery requires stable valid messages").
+
+    Found via a real bug in firmware/src/irrigation_slice.cpp and
+    vertical_slice.cpp (2026-08-05): both computed their safety
+    supervisor's `dataStale` input from the *raw* communication state,
+    which SharedState::tick() clears back to DATA_ACTIVE as soon as a
+    single fresh reading arrives -- so automatic operation resumed after
+    one valid message instead of the blueprint's documented "several
+    consecutive valid messages." `Mode.WARNING`/`Mode.RECOVERY` are what
+    `evaluate_tick()` actually gates on `RecoveryTracker.stable_
+    communication_confirmed()` (5 consecutive valid messages by default),
+    so the caller-facing safety input should read *this*, not the
+    instantaneous communication state. This function exists so any future
+    Python-side integration (an updated Stage 8 fake ESP, a new
+    end-to-end test, etc.) gets the correct behavior automatically,
+    instead of independently reinventing -- and possibly getting wrong --
+    the same wiring the firmware got wrong once already.
+    """
+    return mode in (Mode.WARNING, Mode.RECOVERY)

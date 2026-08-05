@@ -71,6 +71,55 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (host-level regression test added for the recovery-gating fix)
+
+Agent: agent-03-logic (Claude Sonnet 5).
+
+Directly following the recovery-gating bug fix: noticed that nothing in
+`logic/` or `backend/tests/` would have caught that exact bug, or would
+catch a regression of it in the future. `backend/tests/test_scenarios.py`'s
+fake ESP never passed `data_stale` to `evaluate_safety()` at all (relying
+on the Python default, `False`) -- not the same bug, but a real scope
+gap: Stage 8's scenarios never modeled staleness/recovery, so there was
+no host-level proof of the "5 consecutive valid messages" requirement
+anywhere, only the live hardware test from the previous entry.
+
+Changed:
+
+- Added `logic/protocol.py::is_data_stale_for_safety(mode)`: the correct
+  `data_stale` input for `evaluate_safety()`, derived from
+  `Mode.WARNING`/`Mode.RECOVERY` rather than the raw communication state
+  -- the Python equivalent of the exact fix just applied to
+  `irrigation_slice.cpp`/`vertical_slice.cpp`/`mqtt_test_harness.cpp`.
+  Documented in the docstring as existing specifically so future
+  Python-side integration work (an updated fake ESP, a new end-to-end
+  test) doesn't have to independently rediscover -- or re-break -- this
+  wiring.
+- Added `tests/test_protocol.py::TestIsDataStaleForSafety` (4 tests) and
+  `TestFullRecoveryGatingIntegration` (1 test): the latter wires
+  `evaluate_tick()`, `is_data_stale_for_safety()`, `evaluate_decision()`,
+  and `evaluate_safety()` together exactly as the corrected firmware
+  does, and asserts the identical outcome verified live on hardware --
+  automatic operation stays overridden for exactly
+  `RECOVERY_CONSECUTIVE_VALID_REQUIRED` (5) messages after a stale gap,
+  then resumes on the 6th.
+
+Evidence:
+
+- `python3 -m unittest discover -s tests` -> 93 passed (up from 88).
+- `python3 -m pytest backend/tests/` -> 24 passed, unaffected.
+
+Status updates:
+
+- No roadmap task or gate criterion changes from this entry -- it adds
+  regression coverage for behavior the previous entry's live hardware
+  test already proved and already counted as evidence for Gate A.
+- `backend/tests/test_scenarios.py` was not modified to use
+  `is_data_stale_for_safety()` -- that would be a reasonable follow-up
+  (Stage 8's fake ESP could gain a genuine recovery scenario) but is a
+  scope expansion beyond closing the gap this entry targeted, left for a
+  future session.
+
 Date: 2026-08-05 JST (real safety-supervisor bug found and fixed; Gates A, B, C closed -- first gate progress ever recorded)
 
 Agent: agent-04-firmware-runtime, agent-01-coordinator (Claude Sonnet 5).
