@@ -134,7 +134,6 @@
   }
   .panel--climate { --accent: var(--amber); }
   .panel--actuators { --accent: var(--purple); }
-  .panel--events { --accent: var(--muted); }
 
   .panel h2 {
     font-size: 0.95rem;
@@ -266,48 +265,7 @@
   .fan-indicator.on { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
   .fan-indicator.off { background: var(--line); }
 
-  ul#eventLog {
-    list-style: none;
-    margin: 14px 0 0;
-    padding: 0;
-    max-height: 320px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  ul#eventLog li {
-    display: flex;
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--bg);
-    border-left: 3px solid var(--line);
-  }
-  ul#eventLog li.tone-good { border-left-color: var(--green); }
-  ul#eventLog li.tone-bad { border-left-color: var(--red); }
-  .event-body { flex: 1; min-width: 0; }
-  .event-top {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .event-label { font-weight: 700; font-size: 0.86rem; }
-  ul#eventLog li.tone-good .event-label { color: var(--green); }
-  ul#eventLog li.tone-bad .event-label { color: var(--red); }
-  .event-time { color: var(--muted); font-size: 0.74rem; flex: none; white-space: nowrap; }
-  ul#eventLog li.empty-state {
-    justify-content: center;
-    border-left: none;
-    background: transparent;
-    color: var(--muted);
-    font-size: 0.85rem;
-    padding: 26px 0;
-  }
-
   .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-
-  .full-width { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
@@ -372,17 +330,6 @@
         <dl class="response-grid" id="responseGrid"></dl>
         <div class="reasons" id="responseReasons"></div>
       </section>
-
-      <section class="panel panel--events full-width" id="eventLogPanel">
-        <h2>
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
-          Event log
-        </h2>
-        <div class="btn-row">
-          <button class="btn secondary" id="refreshEventsBtn" type="button">Refresh</button>
-        </div>
-        <ul id="eventLog"></ul>
-      </section>
     </div>
   </div>
 
@@ -406,8 +353,6 @@
         fanLabel: document.getElementById("fanLabel"),
         pumpIndicator: document.getElementById("pumpIndicator"),
         pumpLabel: document.getElementById("pumpLabel"),
-        refreshEventsBtn: document.getElementById("refreshEventsBtn"),
-        eventLog: document.getElementById("eventLog"),
         soilMoistureSlider: document.getElementById("soilMoistureSlider"),
         soilMoistureValue: document.getElementById("soilMoistureValue"),
         tankLevelSlider: document.getElementById("tankLevelSlider"),
@@ -534,83 +479,8 @@
         } catch (error) {
           renderError("Could not reach the bridge: " + error.message);
         }
-        refreshEvents();
       }
 
-      // Translates the bridge's internal event codes (backend/app.py's
-      // EventLog) into plain language -- a common user has no reason to
-      // know what "ESP_REJECTED" means. Falls back to the raw code for
-      // anything not in this list, so a future backend event code still
-      // shows up rather than disappearing.
-      const EVENT_LABELS = {
-        SENT: "Reading sent",
-        ACCEPTED: "Accepted",
-        ESP_REJECTED: "Rejected by device",
-        ESP_UNREACHABLE: "Device unreachable",
-        ACTUATOR_FEEDBACK_SIMULATED: "Fault simulated",
-        SESSION_RESET: "Session reset"
-      };
-
-      function eventLabel(code) {
-        return EVENT_LABELS[code] || code;
-      }
-
-      // Codes ending in these suffixes are shown with a red accent;
-      // ACCEPTED-style codes get a green accent; everything else stays
-      // neutral. Purely presentational -- does not change what data is
-      // fetched or stored, only how the existing event log is displayed.
-      function eventTone(code) {
-        if (/REJECTED|UNREACHABLE|ERROR/.test(code)) return "bad";
-        if (/ACCEPTED/.test(code)) return "good";
-        return "neutral";
-      }
-
-      function buildEventRow(item) {
-        const li = document.createElement("li");
-        li.className = "tone-" + eventTone(item.code);
-
-        const body = document.createElement("div");
-        body.className = "event-body";
-
-        const top = document.createElement("div");
-        top.className = "event-top";
-
-        const label = document.createElement("span");
-        label.className = "event-label";
-        label.textContent = eventLabel(item.code);
-        top.appendChild(label);
-
-        const time = document.createElement("span");
-        time.className = "event-time";
-        time.textContent = new Date(item.timestamp_ms).toLocaleTimeString();
-        top.appendChild(time);
-
-        body.appendChild(top);
-
-        li.appendChild(body);
-        return li;
-      }
-
-      async function refreshEvents() {
-        try {
-          const res = await fetch(bridgeUrl() + "/api/events?limit=20");
-          const items = await res.json();
-          elements.eventLog.innerHTML = "";
-          if (items.length === 0) {
-            const empty = document.createElement("li");
-            empty.className = "empty-state";
-            empty.textContent = "No events yet.";
-            elements.eventLog.appendChild(empty);
-            return;
-          }
-          for (const item of items) {
-            elements.eventLog.appendChild(buildEventRow(item));
-          }
-        } catch (error) {
-          // Bridge unreachable; leave the existing log as-is rather than
-          // clearing it, so a transient blip doesn't erase history.
-        }
-      }
 
       elements.temperatureSlider.addEventListener("input", () => {
         elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
@@ -631,13 +501,10 @@
         }
       });
       elements.sendBtn.addEventListener("click", requestSend);
-      elements.refreshEventsBtn.addEventListener("click", refreshEvents);
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
       elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
-
-      refreshEvents();
 
       // Keeps the ESP's view of these readings continuously fresh while
       // this page stays open. Necessary, not cosmetic: firmware/include/
