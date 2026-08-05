@@ -204,6 +204,8 @@ void rejectAndLog(long sequence, bool haveSequence, const char* error, unsigned 
 // unchanged.
 void handleSensorMessage(const String& body) {
   unsigned long nowMs = millis();
+  Serial.print("Received sensor message: ");
+  Serial.println(body);
 
   JsonDocument doc;
   DeserializationError parseError = deserializeJson(doc, body);
@@ -340,20 +342,71 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   handleSensorMessage(body);
 }
 
-void connectWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
+// Blocking -- only safe to call from setup(). Calling this from loop()
+// would stall mqttClient.loop() for up to 15s on every WiFi hiccup,
+// which is exactly the kind of compounding failure that turned a
+// transient WiFi drop into a dead MQTT session during testing.
+void connectWiFiBlocking() {
+  Serial.println("Connecting to WiFi...");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   unsigned long started = millis();
   while (WiFi.status() != WL_CONNECTED && millis() - started < 15000) {
     delay(250);
   }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.print("WiFi connected, IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("WiFi connect timed out");
+  }
 }
+
+// Roadmap-style tuning constant: minimum gap between WiFi.begin() calls
+// from loop(). Calling WiFi.begin() again while a connection attempt is
+// already resolving produces "sta is connecting, return error" and can
+// itself destabilize the connection -- observed directly during testing,
+// not a hypothetical concern.
+constexpr unsigned long kWifiReconnectBackoffMs = 5000;
+unsigned long lastWifiAttemptMs = 0;
+
+// Non-blocking -- safe to call every loop() iteration. Does not wait for
+// the result; WiFi.status() on a later call reports whether it succeeded.
+void maintainWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  unsigned long nowMs = millis();
+  if (nowMs - lastWifiAttemptMs < kWifiReconnectBackoffMs) return;
+  lastWifiAttemptMs = nowMs;
+  Serial.println("WiFi not connected, retrying...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
+// Roadmap-style tuning constant, not a hardware fact: minimum gap between
+// MQTT reconnect attempts. Mirrors the reference project's 3000ms backoff
+// (Full-control-on-ESP32's connectMqtt() gate) -- without this, a
+// transient failure right after a successful CONNECT can trigger a tight
+// reconnect loop that never lets a TLS session stabilize, since each new
+// attempt with the same client ID kicks the previous one off the broker.
+constexpr unsigned long kMqttReconnectBackoffMs = 3000;
+unsigned long lastMqttAttemptMs = 0;
 
 void connectMqtt() {
   if (mqttClient.connected()) return;
+  unsigned long nowMs = millis();
+  if (nowMs - lastMqttAttemptMs < kMqttReconnectBackoffMs) return;
+  lastMqttAttemptMs = nowMs;
+
+  Serial.println("Connecting to MQTT broker...");
   if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
-    mqttClient.subscribe(kSensorTopic, 1);
+    Serial.println("MQTT connected");
+    bool subscribed = mqttClient.subscribe(kSensorTopic, 1);
+    Serial.print("Subscribe to ");
+    Serial.print(kSensorTopic);
+    Serial.print(" returned: ");
+    Serial.println(subscribed ? "true" : "false");
     shared.events.push(millis(), "MQTT_CONNECTED", kSensorTopic);
+  } else {
+    Serial.print("MQTT connect failed, rc=");
+    Serial.println(mqttClient.state());
   }
 }
 
@@ -368,7 +421,7 @@ void setup() {
 
   shared.system.transitionTo(Mode::CONNECTING);
   shared.system.setCommunicationState(CommunicationState::CONNECTING);
-  connectWiFi();
+  connectWiFiBlocking();
   shared.system.setCommunicationState(CommunicationState::ONLINE);
   shared.system.transitionTo(Mode::READY);
   shared.system.transitionTo(Mode::AUTOMATIC);
@@ -383,7 +436,7 @@ void setup() {
 }
 
 void loop() {
-  if (WiFi.status() != WL_CONNECTED) connectWiFi();
+  maintainWiFi();
   if (WiFi.status() == WL_CONNECTED && !mqttClient.connected()) {
     connectMqtt();
   } else if (mqttClient.connected()) {
@@ -392,4 +445,17 @@ void loop() {
 
   shared.tick(millis());
   serviceBuzzer(millis());
+
+  // Debug-only heartbeat, not part of the normal design -- lets a serial
+  // capture of any duration confirm the loop is alive and what it
+  // currently believes its connection state is, without needing to catch
+  // a one-shot event at exactly the right moment.
+  static unsigned long lastHeartbeatMs = 0;
+  if (millis() - lastHeartbeatMs > 5000) {
+    lastHeartbeatMs = millis();
+    Serial.print("heartbeat wifi=");
+    Serial.print(WiFi.status() == WL_CONNECTED ? "up" : "down");
+    Serial.print(" mqtt=");
+    Serial.println(mqttClient.connected() ? "up" : "down");
+  }
 }

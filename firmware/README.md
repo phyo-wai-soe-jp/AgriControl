@@ -13,14 +13,20 @@ blueprint's roadmap task 2 originally said "Record the MicroPython version";
 that task is reinterpreted as "record the firmware toolchain and version"
 (see `docs/PROJECT_STATE.md`).
 
-None of this code has been built or flashed from this environment -- there is
-no PlatformIO toolchain or physical board access here. Build/upload each
-environment yourself, capture the observed output (serial log, photo, or
-description), and record it as evidence in `docs/PROJECT_STATE.md` before
-marking the corresponding roadmap task done.
+**Update 2026-08-05**: a PlatformIO toolchain is available in this
+environment after all (`pip install platformio`) -- prior sessions'
+"no toolchain here" claim was a wrong assumption, never actually checked.
+All 10 environments now build cleanly (`pio run` with no `-e` flag). Only
+`env:mqtt_test_harness` has actually been flashed and run against the
+physical board so far (see `docs/PROJECT_STATE.md`'s 2026-08-05 entry).
+`env:runtime`, `env:vertical_slice`, and `env:irrigation_slice` are
+compiled-only, not yet flashed -- do that and capture the observed output
+(serial log, photo, or description) before marking their roadmap tasks
+done.
 
 ```bash
 cd firmware
+pio run                              # compile every environment (no upload)
 pio run -e main -t upload            # board bring-up (LED blink)
 pio run -e test_oled -t upload        # roadmap task 17
 pio run -e test_neopixel -t upload    # roadmap task 18
@@ -30,8 +36,16 @@ pio run -e test_all_outputs -t upload # roadmap task 21 (run after 17-19)
 pio run -e runtime -t upload          # roadmap tasks 24-30 (needs secrets.h)
 pio run -e vertical_slice -t upload   # roadmap tasks 31/33-37 (needs secrets.h)
 pio run -e irrigation_slice -t upload # roadmap tasks 49-57 (needs secrets.h)
+pio run -e mqtt_test_harness -t upload # ad-hoc verification harness (needs secrets.h + mqtt_secrets.h)
 pio device monitor                    # serial output, 115200 baud
 ```
+
+Note: every `build_src_filter` in `platformio.ini` was silently broken
+until 2026-08-05 (`+<file.cpp> -<*>` has its patterns in the wrong order
+for this PlatformIO version, producing "Nothing to build" for every
+environment) -- fixed by reversing the order (`-<*> +<file.cpp>`). This
+had never been caught before because this is the first time `pio run` had
+actually been run.
 
 `env:runtime`, `env:vertical_slice`, and `env:irrigation_slice` need WiFi
 credentials: copy `include/secrets.h.example` to `include/secrets.h` and
@@ -192,14 +206,18 @@ generic eval board, not the AgriControl greenhouse build:
    blocking `delay()` calls in the HTTP handler -- acceptable, or is a
    real multi-beep pattern (needing an async/non-blocking beep scheduler)
    worth building?
-9. For `env:mqtt_test_harness`: a distinct MQTT broker identity (host,
-   username, password) with publish/subscribe rights scoped to the
-   `agricontrol/#` topics on the self-hosted Mosquitto broker behind
-   `esp32.phyowaisoe.com` -- not a reused device credential from any other
-   project. Needed both on the firmware side (`include/mqtt_secrets.h`)
-   and for `tools/mqtt_hardware_verify.py` to actually publish test
-   readings and read back real responses.
-10. Whether there's any way to flash new firmware onto the physical board
-    remotely (e.g. an SSH-reachable machine with it attached via USB), or
-    whether every build in this project needs the owner to do the actual
-    `pio run -t upload` step by hand.
+9. ~~For `env:mqtt_test_harness`: a distinct MQTT broker identity...~~
+   **Resolved 2026-08-05**: a scoped `agricontrol-test-harness` credential
+   was created on the Mosquitto broker behind `esp32.phyowaisoe.com`,
+   granted `readwrite` on `agricontrol/sensor` and `agricontrol/state`
+   only. Actually used to flash and verify `env:mqtt_test_harness` against
+   the physical board -- see `docs/PROJECT_STATE.md`'s 2026-08-05 entry.
+10. ~~Whether there's any way to flash new firmware onto the physical board
+    remotely...~~ **Resolved 2026-08-05**: yes -- the sandboxed Bash tool in
+    this environment runs directly on the owner's own machine, the same
+    one the board is physically connected to via USB
+    (`/dev/cu.usbmodem1101`). `pip install platformio` was all that was
+    missing; the toolchain was never actually unreachable. This was a
+    wrong assumption carried across many prior sessions, not a real
+    constraint -- worth re-checking assumptions like this rather than
+    repeating them.

@@ -71,6 +71,151 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (first real hardware verification of AgriControl's own compiled firmware)
+
+Agent: agent-04-firmware-runtime, agent-02-hardware (Claude Sonnet 5).
+
+**Corrected a long-standing wrong assumption first**: every prior session in
+this project, including this one's own earlier turns, stated "no
+PlatformIO toolchain, no board, no WiFi network reachable from here" as an
+environment fact. It was never actually true in this sense -- the
+sandboxed Bash tool runs directly on the owner's own Mac (the same
+machine with the physical board's USB connection), not an isolated remote
+container. The owner surfaced this by pointing out "usb is already
+connected" after being told flashing wasn't possible; checking
+`/dev/cu.usbmodem1101` confirmed it. `pip install platformio` then just
+worked. This should have been checked much earlier rather than assumed.
+
+**Result: `pio run` (build-only) now succeeds for all 10 firmware
+environments** -- the first time any of this project's C++ has ever
+actually been compiled, after many sessions of "reviewed, not compiled"
+firmware. This surfaced a real, previously-undetected bug affecting
+*every* environment: `build_src_filter = +<file.cpp> -<*>` has its
+patterns in the wrong order for this PlatformIO version -- the later
+`-<*>` (broader) pattern overrides the earlier `+<file.cpp>` match,
+producing "Nothing to build" for literally every environment. Fixed by
+reversing the order (`-<*> +<file.cpp>`) project-wide in
+`firmware/platformio.ini`. This had been sitting broken since Stage 3 and
+was only caught because this is the first time anyone (owner or agent)
+ran `pio run` at all.
+
+**Then flashed and debugged `env:mqtt_test_harness` against the real
+ESP32-C3M-TRY board** (the same physical board, now dedicated to
+AgriControl -- the owner disconnected it from the `Full-control-on-ESP32`
+project first). Three real bugs found and fixed through iterative
+flash-and-observe cycles, using a combination of direct serial capture
+(via `pyserial`, since PlatformIO's own `device monitor` needs a real TTY
+this environment doesn't have) and the Mosquitto broker's own verbose log
+(`log_type all`) as a second, independent observation channel when serial
+output proved unreliable to capture reliably right after a fresh flash:
+
+1. **`connectMqtt()` had no reconnect backoff.** A transient failure right
+   after a successful CONNECT triggered a tight reconnect loop (the broker
+   log showed the same client ID reconnecting and kicking off its own
+   previous session repeatedly, seconds apart). Fixed by adding a 3000ms
+   minimum gap between attempts, mirroring the reference project's own
+   `connectMqtt()` pattern.
+2. **`connectWiFi()` was blocking and reused unsafely from `loop()`.**
+   Calling `WiFi.begin()` again while a connection attempt was already
+   resolving produced `wifi:sta is connecting, return error` (caught via
+   serial), and the up-to-15-second blocking wait, when triggered from
+   `loop()`, stalled `mqttClient.loop()` long enough to compound the MQTT
+   instability above. Split into `connectWiFiBlocking()` (setup()-only,
+   blocking is fine at boot) and a non-blocking `maintainWiFi()` (loop()
+   -safe, own 5000ms backoff, never blocks).
+3. **The Mosquitto ACL for the new `agricontrol-test-harness` credential
+   was backwards.** Granted `write`-only on `agricontrol/sensor` and
+   `read`-only on `agricontrol/state`, reasoning about the topics from a
+   "test client publishes/reads" perspective -- but the same credential
+   is also what the *device* uses, and the device needs to *subscribe*
+   (read) `agricontrol/sensor` and *publish* (write) `agricontrol/state`.
+   ACL enforcement had also been silently broken since this user was
+   created (traced to `/etc/mosquitto/acl.conf` having the wrong
+   owner/permissions -- Mosquitto 2.0.18 warns but doesn't refuse to load
+   a world-readable, non-`mosquitto`-owned ACL file, and apparently
+   doesn't enforce it correctly either in that state), so this asymmetry
+   went undetected until a full `systemctl restart mosquitto` finally got
+   the ACL loading and enforcing correctly -- at which point it started
+   correctly *blocking* both directions. Fixed by granting `readwrite` on
+   both topics for this credential.
+
+**Verified end-to-end, for real, for the first time**: published a
+sensor reading via `tools/mqtt_hardware_verify.py` and read back the
+physical board's actual response.
+
+- First message (after a stale gap): `mode: safety_override`,
+  `alarm_level: warning`, `fan: false`, `window_angle: 10`, `pump: false`,
+  `triggered_rules: [TEMPERATURE-002, IRRIGATION-001, DATA-STALE]` -- the
+  safety supervisor correctly overriding to the safe state because the
+  prior reading had gone stale, exactly matching the documented safe-state
+  matrix.
+- Subsequent messages (fresh data): `mode: automatic`, `alarm_level:
+  normal`, `fan: true`, `window_angle: 90`, `pump: true`, matching
+  `logic/decision.py`'s already-host-tested rules exactly for
+  temperature=32C (TEMPERATURE-002: fan on, window half) and
+  soil_moisture=20%/rain=0 (IRRIGATION-001: pump on).
+
+This is the first time in this project's history that `decision.h`/
+`safety.h`/`irrigation.h`, compiled into a real binary and run on the
+physical board, have been confirmed to produce correct output -- not
+reviewed C++, not a host-tested Python mirror, the actual compiled
+firmware. `env:mqtt_test_harness` is a field-for-field duplicate of
+`irrigation_slice.cpp`'s validation/decision/safety/actuation pipeline
+(only the transport differs, MQTT vs. WebServer -- see that file's
+header), so this is very strong, though not literally direct, evidence
+that `irrigation_slice.cpp` itself would behave identically if flashed
+and driven over local HTTP instead. Roadmap task 32 ("Send temperature
+with curl") is deliberately **not** marked done from this: it names curl
+against the local-HTTP environments specifically, which remain unflashed
+and untested in their own right. Overclaiming task 32 from a different
+file's success would repeat exactly the mistake this project has
+consistently avoided all session.
+
+Evidence:
+
+- `pio run` (all 10 environments): SUCCESS.
+- `pio run -e mqtt_test_harness -t upload --upload-port /dev/cu.usbmodem1101`:
+  SUCCESS, multiple times across the debugging iterations.
+- Mosquitto broker log (`/var/log/mosquitto/mosquitto.log`, verbose mode):
+  direct confirmation of `CONNECT`/`CONNACK`, `SUBSCRIBE`/`SUBACK`,
+  `PUBLISH`/`PUBACK` at the protocol level, independent of any
+  client-library interpretation.
+- Full request/response JSON pairs from `tools/mqtt_hardware_verify.py`,
+  cross-checked field-by-field against `logic/decision.py`'s documented
+  thresholds.
+
+Status updates:
+
+- No roadmap task or branch status changed as a direct result of this
+  session -- the genuinely new, durable facts are: (a) the whole firmware
+  project now compiles cleanly (a real, low-risk, unambiguous fact worth
+  recording even without a specific task tied to it), and (b) the
+  decision/safety logic is now confirmed correct when compiled and run on
+  real hardware, via a parallel test harness rather than the "production"
+  files themselves.
+- Known Limits (below) updated: "firmware/ has never been compiled or
+  run" is no longer accurate and has been corrected.
+
+Left open / not attempted this session:
+
+1. The same WiFi-reconnect-robustness bug (blocking `WiFi.begin()` in
+   `setup()`, never retried in `loop()`) almost certainly also exists in
+   `runtime.cpp`, `vertical_slice.cpp`, and `irrigation_slice.cpp` --
+   discovered here because `mqtt_test_harness.cpp` happened to get
+   exercised long enough to hit it, not because those other files were
+   checked. Not fixed there this session; flagged for the next one.
+2. The physical board is now running `env:mqtt_test_harness`, not any of
+   the "production" local-HTTP environments. Flashing
+   `env:irrigation_slice` and testing it via curl (roadmap task 32) is
+   still open and would be the direct way to close it.
+3. The Mosquitto ACL fix applied here is specific to the
+   `agricontrol-test-harness` credential this project added -- the
+   pre-existing `esp32-device`/`dashboard-backend` entries for the other
+   project were not touched and were not re-verified after the ACL
+   enforcement bug was found; whether they were also affected by the same
+   silent-bypass window is unknown and is that project's concern, not
+   this one's, but worth the owner being aware of.
+
 Date: 2026-08-04 JST (MQTT hardware-verification harness -- ad-hoc, not a numbered roadmap task)
 
 Agent: agent-04-firmware-runtime, agent-02-hardware (Claude Sonnet 5).
@@ -1412,13 +1557,17 @@ changes them:
   assigned for either (see Known Unknowns below); every session's
   irrigation/fan logic computes and reports a commanded state but never
   writes it to a pin.
-- **`firmware/` has never been compiled or run.** Every C++ file across
-  every stage is a reviewed, line-by-line-checked port of the equivalent
-  `logic/` module, not verified working code -- there is no PlatformIO
-  toolchain, physical board, or reachable WiFi network in this
-  environment. Test coverage is asymmetric by design: `logic/`,
-  `backend/`, and `simulator/` are genuinely executed and proven;
-  `firmware/` is reviewed only.
+- **Most of `firmware/`'s "production" environments have been compiled
+  but not flashed or run.** `pio run` now succeeds for all 10 PlatformIO
+  environments (corrected 2026-08-05 -- a PlatformIO toolchain has been
+  available in this environment the whole time; that was a wrong
+  assumption carried for many sessions, not a real constraint). Only
+  `env:mqtt_test_harness` has actually been flashed and exercised against
+  the physical board so far, and its decision/safety pipeline is
+  field-for-field identical to `irrigation_slice.cpp`'s. `runtime.cpp`,
+  `vertical_slice.cpp`, and `irrigation_slice.cpp` themselves are still
+  compiled-only, not flashed -- flashing and testing them via their own
+  local-HTTP transport (roadmap task 32) remains open.
 - **Stage 9's actuator-fault detection is simulated, not measured.**
   `logic/actuator_feedback.py` proves the safety supervisor responds
   correctly to a detected fault, using an injected/simulated feedback
