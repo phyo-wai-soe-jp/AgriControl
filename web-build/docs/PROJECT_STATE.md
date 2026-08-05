@@ -71,6 +71,28 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-06 JST (fixed a real session/sequence bug found while deploying the simulator publicly)
+
+Agent: agent-05-backend (Claude Sonnet 5).
+
+Deployed `simulator/index.html` to the public server (`https://phyowaisoe.com/agricontrol/simulator/`) so it has a real URL, with `backend/app.py` kept running on the Mac (LAN-connected to the ESP) rather than the remote VPS, since the VPS cannot reach the ESP's private LAN address. While checking the deployment end-to-end against the real board, found that `POST /api/temperature` rejected the very first message of a genuinely new browser session with `"duplicate or out-of-order sequence"`.
+
+**Root cause**: `shared.haveSequence`/`shared.lastSequence` in `firmware/include/shared_state.h` were being used as a lifetime-of-device counter for the duplicate/out-of-order check in all four firmware environments (`runtime.cpp`, `vertical_slice.cpp`, `irrigation_slice.cpp`, `mqtt_test_harness.cpp`), even though the blueprint's own protocol rules (page 4) are explicit: "New browser start creates a new session_id" and "Sequence increases inside each session." `session_id` was accepted in every incoming JSON payload but never actually read by any firmware file -- so once the device had accepted *any* message since boot, no new session could ever send `sequence: 1` again without a full ESP reboot. The bridge's own "Reset session" button (new `session_id`, sequence counter restarted at 1) therefore didn't work against real firmware at all.
+
+**Fix**: added `SharedState::acceptSequence(sessionId, sequence)` to `shared_state.h` -- new `currentSessionId`/`haveSessionId`/`sessionLastSequence`/`haveSessionSequence` fields, kept deliberately separate from the existing `lastSequence`/`haveSequence` fields, which still drive `isStartup` (the blueprint's distinct "boot_id"/genuine-restart concept) and must not reset on a session change. All four firmware files now require `session_id` (400 `"missing or invalid session_id"` if absent) and call `shared.acceptSequence(sessionId, sequence)` instead of comparing against the device-lifetime counter directly. Mirrored to the host-level proof: added `SessionSequenceTracker` to `logic/protocol.py` (parallel structure to the firmware method) and 6 new tests in `tests/test_protocol.py`'s `TestSessionSequenceTracker`, including the exact regression case (`session-a` reaches sequence 100, `session-b`'s sequence=1 is still accepted).
+
+**Verified on real hardware**, not just host tests: flashed the fix to the physical board, then reproduced the exact original failure sequence -- ran `session-A` up to sequence 100, then confirmed `session-B`'s `sequence: 1` was accepted (previously rejected), a genuine duplicate (`session-B` sequence 1 sent twice) was still correctly rejected, a request missing `session_id` was correctly rejected with the new validation error, and `mode` stayed `"automatic"`/whatever the decision engine actually produced rather than incorrectly re-triggering the `STARTUP` safety override on the new session (confirming `isStartup` truly stayed boot-scoped, not session-scoped). Also re-verified through the actual running FastAPI bridge (not just direct curl to the ESP): called `POST /api/session/reset` (the same endpoint the simulator's "Reset session" button uses) then sent a temperature reading -- accepted, where it previously would have 502'd with "ESP rejected the message."
+
+Evidence:
+
+- `pio run -e irrigation_slice -e vertical_slice -e runtime -e mqtt_test_harness` -> all 4 SUCCESS.
+- `python3 -m unittest discover -s tests` -> 99 passed (up from 93).
+- `python3 -m pytest backend/tests/` -> 35 passed, unaffected (bridge itself needed no changes -- it already always sent `session_id`).
+
+Status updates: none -- this is a correctness fix within already-`done` Stage 4/5 tasks (25/38), not a new or reopened roadmap task. No `data/progress-baseline.json` changes.
+
+Also flagged to the owner and explicitly accepted: the deployed simulator and bridge currently have no authentication and `CORS allow_origins="*"` -- the public URL can send real commands and injected faults to the physical ESP with no login. Revisit if this needs tightening later.
+
 Date: 2026-08-05 JST (Stage 9 done for real: the missing website-to-ESP actuator-fault closed loop, built and verified on real hardware)
 
 Agent: agent-06-frontend-sim, agent-05-backend (Claude Sonnet 5).

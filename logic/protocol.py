@@ -71,16 +71,52 @@ def is_stale(reading_age_ms: int, timeout_ms: int = DATA_STALE_TIMEOUT_MS) -> bo
 
 
 def is_valid_sequence(sequence: int, last_sequence: int, have_sequence: bool) -> bool:
-    """Roadmap task 38: rejects duplicate or out-of-order sequence numbers.
-    Mirrors the check duplicated across firmware/src/runtime.cpp,
-    vertical_slice.cpp, and irrigation_slice.cpp's handleSensorPost():
-    `shared.haveSequence && sequence <= shared.lastSequence -> reject`.
-    A gap (sequence jumping ahead by more than 1) is still valid -- only
-    non-increasing sequence numbers are rejected.
+    """Roadmap task 38: rejects duplicate or out-of-order sequence numbers,
+    within whatever scope the caller's last_sequence/have_sequence apply
+    to. A gap (sequence jumping ahead by more than 1) is still valid --
+    only non-increasing sequence numbers are rejected. See
+    SessionSequenceTracker below for the correctly-scoped caller: this
+    rule must be applied per session_id, not across a device's whole
+    uptime.
     """
     if have_sequence and sequence <= last_sequence:
         return False
     return True
+
+
+class SessionSequenceTracker:
+    """Roadmap task 38, corrected 2026-08-06: mirrors firmware/include/
+    shared_state.h's SharedState::acceptSequence(). Blueprint protocol
+    rules: "New browser start creates a new session_id" and "Sequence
+    increases inside each session" -- is_valid_sequence()'s duplicate/
+    out-of-order check must be scoped to session_id, not applied against a
+    single lifetime-of-device counter.
+
+    Found broken on real hardware: once the ESP had accepted any message,
+    a brand new browser session's first message (sequence=1) was rejected
+    as "duplicate or out-of-order," because the firmware was (incorrectly)
+    comparing it against the highest sequence number seen from *any*
+    session, not the new session's own (nonexistent) history. A session_id
+    different from the one last seen now starts a fresh per-session
+    sequence baseline, mirroring the corrected firmware behavior exactly.
+    """
+
+    def __init__(self) -> None:
+        self._current_session_id = ""
+        self._have_session_id = False
+        self._session_last_sequence = 0
+        self._have_session_sequence = False
+
+    def accept(self, session_id: str, sequence: int) -> bool:
+        if not self._have_session_id or session_id != self._current_session_id:
+            self._current_session_id = session_id
+            self._have_session_id = True
+            self._have_session_sequence = False
+        if not is_valid_sequence(sequence, self._session_last_sequence, self._have_session_sequence):
+            return False
+        self._session_last_sequence = sequence
+        self._have_session_sequence = True
+        return True
 
 
 def is_valid_temperature_c(value: float) -> bool:

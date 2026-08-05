@@ -214,12 +214,17 @@ void handleSensorMessage(const String& body) {
     return;
   }
 
+  if (!doc["session_id"].is<const char*>()) {
+    rejectAndLog(0, false, "missing or invalid session_id", nowMs, "Missing or invalid session_id field");
+    return;
+  }
+  String sessionId = doc["session_id"].as<String>();
   if (!doc["sequence"].is<long>()) {
     rejectAndLog(0, false, "missing or invalid sequence", nowMs, "Missing or invalid sequence field");
     return;
   }
   long sequence = doc["sequence"].as<long>();
-  if (shared.haveSequence && sequence <= static_cast<long>(shared.lastSequence)) {
+  if (!shared.acceptSequence(sessionId, sequence)) {
     rejectAndLog(sequence, true, "duplicate or out-of-order sequence", nowMs, "Duplicate or out-of-order sequence");
     return;
   }

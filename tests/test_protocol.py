@@ -5,6 +5,7 @@ from logic.protocol import (
     DATA_STALE_TIMEOUT_MS,
     RECOVERY_CONSECUTIVE_VALID_REQUIRED,
     RecoveryTracker,
+    SessionSequenceTracker,
     evaluate_tick,
     is_data_stale_for_safety,
     is_stale,
@@ -35,6 +36,49 @@ class TestSequenceValidation(unittest.TestCase):
         # Only non-increasing sequence numbers are rejected; skipping ahead
         # (e.g. a dropped request) is not itself an error.
         self.assertTrue(is_valid_sequence(100, last_sequence=5, have_sequence=True))
+
+
+class TestSessionSequenceTracker(unittest.TestCase):
+    """Roadmap task 38, corrected 2026-08-06: the duplicate/out-of-order
+    sequence check must be scoped per session_id, not to the device's
+    entire uptime -- found broken on real hardware where a second browser
+    session's sequence=1 was rejected against a prior session's history."""
+
+    def test_first_message_of_a_session_is_always_valid(self):
+        tracker = SessionSequenceTracker()
+        self.assertTrue(tracker.accept("session-a", 1))
+
+    def test_duplicate_sequence_within_a_session_is_rejected(self):
+        tracker = SessionSequenceTracker()
+        tracker.accept("session-a", 5)
+        self.assertFalse(tracker.accept("session-a", 5))
+
+    def test_out_of_order_lower_sequence_within_a_session_is_rejected(self):
+        tracker = SessionSequenceTracker()
+        tracker.accept("session-a", 5)
+        self.assertFalse(tracker.accept("session-a", 3))
+
+    def test_next_sequence_within_a_session_is_valid(self):
+        tracker = SessionSequenceTracker()
+        tracker.accept("session-a", 5)
+        self.assertTrue(tracker.accept("session-a", 6))
+
+    def test_new_session_id_resets_the_sequence_baseline(self):
+        # The exact bug found on real hardware: a prior session reaching a
+        # high sequence number must not block a new session's sequence=1.
+        tracker = SessionSequenceTracker()
+        tracker.accept("session-a", 100)
+        self.assertTrue(tracker.accept("session-b", 1))
+
+    def test_returning_to_an_old_session_id_does_not_replay_its_history(self):
+        # Switching sessions resets the baseline; switching *back* resets
+        # it again rather than restoring the old session's own history --
+        # matching the firmware's single current-session baseline, not a
+        # per-session-id memory bank.
+        tracker = SessionSequenceTracker()
+        tracker.accept("session-a", 50)
+        tracker.accept("session-b", 1)
+        self.assertTrue(tracker.accept("session-a", 1))
 
 
 class TestTemperatureValidation(unittest.TestCase):
