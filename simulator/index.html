@@ -340,50 +340,51 @@
           <span class="brand-mark" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/></svg>
           </span>
-          AgriControl Simulator
+          <span data-i18n="appTitle">AgriControl Simulator</span>
         </h1>
       </div>
+      <button class="btn secondary" id="langToggleBtn" type="button">日本語</button>
     </div>
 
     <div class="grid">
       <section class="panel panel--climate" id="sensorsPanel">
         <h2>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
-          Sensors
+          <span data-i18n="sensorsHeading">Sensors</span>
         </h2>
         <div class="row">
-          <label for="temperatureSlider">Temperature</label>
+          <label for="temperatureSlider" data-i18n="temperature">Temperature</label>
           <input type="range" id="temperatureSlider" min="-10" max="50" step="0.5" value="25" />
           <div class="temp-value"><span id="temperatureValue">25.0</span><span class="unit">&deg;C</span></div>
         </div>
         <div class="row">
-          <label for="soilMoistureSlider">Soil moisture <span id="soilMoistureValue">45</span>%</label>
+          <label for="soilMoistureSlider"><span data-i18n="soilMoisture">Soil moisture</span> <span id="soilMoistureValue">45</span>%</label>
           <input type="range" id="soilMoistureSlider" min="0" max="100" step="1" value="45" />
         </div>
         <div class="row">
-          <label for="tankLevelSlider">Tank level <span id="tankLevelValue">70</span>%</label>
+          <label for="tankLevelSlider"><span data-i18n="tankLevel">Tank level</span> <span id="tankLevelValue">70</span>%</label>
           <input type="range" id="tankLevelSlider" min="0" max="100" step="1" value="70" />
         </div>
         <label class="inline-checkbox" style="margin-bottom: 14px;">
-          <input type="checkbox" id="liveUpdateCheckbox" /> Update live while dragging
+          <input type="checkbox" id="liveUpdateCheckbox" /> <span data-i18n="liveUpdate">Update live while dragging</span>
         </label>
         <div class="btn-row">
-          <button class="btn" id="sendBtn" type="button">Send to ESP</button>
+          <button class="btn" id="sendBtn" type="button" data-i18n="sendButton">Send to ESP</button>
         </div>
       </section>
 
       <section class="panel panel--actuators" id="actuatorsPanel">
         <h2>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
-          Actuators
+          <span data-i18n="actuatorsHeading">Actuators</span>
         </h2>
-        <span class="badge idle" id="responseBadge">No response yet</span>
+        <span class="badge idle" id="responseBadge" data-i18n="noResponseYet">No response yet</span>
         <div class="window-scene">
           <div class="actuator-visual">
             <div class="window-frame">
               <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
             </div>
-            <span class="actuator-caption">Window</span>
+            <span class="actuator-caption" data-i18n="windowCaption">Window</span>
           </div>
           <div class="actuator-visual">
             <svg class="fan-icon off" id="fanIndicator" viewBox="0 0 24 24" aria-hidden="true">
@@ -447,11 +448,90 @@
         soilMoistureValue: document.getElementById("soilMoistureValue"),
         tankLevelSlider: document.getElementById("tankLevelSlider"),
         tankLevelValue: document.getElementById("tankLevelValue"),
-        liveUpdateCheckbox: document.getElementById("liveUpdateCheckbox")
+        liveUpdateCheckbox: document.getElementById("liveUpdateCheckbox"),
+        langToggleBtn: document.getElementById("langToggleBtn")
       };
 
       function bridgeUrl() {
         return BRIDGE_URL;
+      }
+
+      // Japanese/English toggle. Covers this page's own UI chrome plus
+      // the small enum vocab the ESP's response uses (mode/alarm_level/
+      // on-off) -- not the free-text "reasons" array, which comes
+      // straight from the backend/firmware in English and isn't worth
+      // re-implementing translation for on the client.
+      const TRANSLATIONS = {
+        en: {
+          appTitle: "AgriControl Simulator",
+          langToggle: "日本語",
+          sensorsHeading: "Sensors",
+          actuatorsHeading: "Actuators",
+          temperature: "Temperature",
+          soilMoisture: "Soil moisture",
+          tankLevel: "Tank level",
+          liveUpdate: "Update live while dragging",
+          sendButton: "Send to ESP",
+          noResponseYet: "No response yet",
+          windowCaption: "Window",
+          fanCaption: "Fan",
+          pumpCaption: "Pump",
+          sequenceLabel: "Sequence",
+          alarmLevelLabel: "Alarm level",
+          fanLabel: "Fan",
+          pumpLabel: "Pump",
+          windowAngleLabel: "Window angle",
+          on: "on",
+          off: "off",
+          errorBadge: "Error",
+          requestFailed: "Request failed",
+          unreachablePrefix: "Could not reach the bridge: "
+        },
+        ja: {
+          appTitle: "アグリコントロール シミュレーター",
+          langToggle: "English",
+          sensorsHeading: "センサー",
+          actuatorsHeading: "アクチュエーター",
+          temperature: "温度",
+          soilMoisture: "土壌水分",
+          tankLevel: "タンク水位",
+          liveUpdate: "ドラッグ中にリアルタイム送信",
+          sendButton: "ESPへ送信",
+          noResponseYet: "応答なし",
+          windowCaption: "窓",
+          fanCaption: "ファン",
+          pumpCaption: "ポンプ",
+          sequenceLabel: "シーケンス",
+          alarmLevelLabel: "警報レベル",
+          fanLabel: "ファン",
+          pumpLabel: "ポンプ",
+          windowAngleLabel: "窓の角度",
+          on: "オン",
+          off: "オフ",
+          errorBadge: "エラー",
+          requestFailed: "リクエスト失敗",
+          unreachablePrefix: "ブリッジに接続できません: "
+        }
+      };
+
+      const MODE_LABELS = {
+        en: { automatic: "automatic", safety_override: "safety override" },
+        ja: { automatic: "自動", safety_override: "安全保護" }
+      };
+      const ALARM_LABELS = {
+        en: { normal: "normal", warning: "warning", critical: "critical", startup_indication: "startup" },
+        ja: { normal: "正常", warning: "警告", critical: "重大", startup_indication: "起動中" }
+      };
+
+      let currentLang = (navigator.language || "").toLowerCase().startsWith("ja") ? "ja" : "en";
+      // Whichever of these two happened most recently, so switching
+      // language can re-render the actual last state instead of falling
+      // back to the idle placeholder.
+      let lastResponseBody = null;
+      let lastErrorMessage = null;
+
+      function t(key) {
+        return TRANSLATIONS[currentLang][key];
       }
 
       function setBadge(el, text, tone) {
@@ -475,21 +555,25 @@
         // string like on an HTML element, so a direct assignment doesn't
         // reliably work across browsers the way it does for windowSash.
         elements.fanIndicator.setAttribute("class", "fan-icon " + (fanOn ? "on" : "off"));
-        elements.fanLabel.textContent = "Fan: " + (fanOn ? "on" : "off");
+        elements.fanLabel.textContent = t("fanCaption") + ": " + (fanOn ? t("on") : t("off"));
 
         elements.pumpIndicator.setAttribute("class", "pump-icon " + (pumpOn ? "on" : "off"));
-        elements.pumpLabel.textContent = "Pump: " + (pumpOn ? "on" : "off");
+        elements.pumpLabel.textContent = t("pumpCaption") + ": " + (pumpOn ? t("on") : t("off"));
       }
 
       function renderResponse(body) {
-        setBadge(elements.responseBadge, body.mode || "unknown", body.mode === "automatic" ? "ok" : "warn");
+        lastResponseBody = body;
+        lastErrorMessage = null;
+
+        const modeText = (MODE_LABELS[currentLang][body.mode]) || body.mode || "unknown";
+        setBadge(elements.responseBadge, modeText, body.mode === "automatic" ? "ok" : "warn");
         elements.responseGrid.innerHTML = "";
         const rows = [
-          ["Sequence", body.sequence],
-          ["Alarm level", body.alarm_level],
-          ["Fan", body.commands && body.commands.fan ? "on" : "off"],
-          ["Pump", body.commands && body.commands.pump ? "on" : "off"],
-          ["Window angle", body.commands ? body.commands.window_angle + "°" : "-"]
+          [t("sequenceLabel"), body.sequence],
+          [t("alarmLevelLabel"), ALARM_LABELS[currentLang][body.alarm_level] || body.alarm_level],
+          [t("fanLabel"), body.commands && body.commands.fan ? t("on") : t("off")],
+          [t("pumpLabel"), body.commands && body.commands.pump ? t("on") : t("off")],
+          [t("windowAngleLabel"), body.commands ? body.commands.window_angle + "°" : "-"]
         ];
         for (const [label, value] of rows) {
           const dt = document.createElement("dt");
@@ -499,6 +583,9 @@
           elements.responseGrid.appendChild(dt);
           elements.responseGrid.appendChild(dd);
         }
+        // The reasons array comes straight from the backend/firmware in
+        // English free text -- not translated, unlike the fixed-vocab
+        // fields above.
         elements.responseReasons.textContent = (body.reasons || []).join(" ");
         if (body.commands) {
           updateWindowVisual(body.commands.window_angle, Boolean(body.commands.fan), Boolean(body.commands.pump));
@@ -506,9 +593,39 @@
       }
 
       function renderError(message) {
-        setBadge(elements.responseBadge, "Error", "err");
+        lastErrorMessage = message;
+        lastResponseBody = null;
+
+        setBadge(elements.responseBadge, t("errorBadge"), "err");
         elements.responseGrid.innerHTML = "";
         elements.responseReasons.textContent = message;
+      }
+
+      function applyStaticTranslations() {
+        document.documentElement.lang = currentLang;
+        document.title = t("appTitle");
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          el.textContent = t(el.getAttribute("data-i18n"));
+        });
+        elements.langToggleBtn.textContent = t("langToggle");
+      }
+
+      // Re-renders whatever the page was already showing (a real
+      // response, an error, or the untouched idle state) in the newly
+      // selected language, instead of just resetting to placeholders --
+      // otherwise switching language after sending a reading would wipe
+      // out the actual ESP response on screen.
+      function setLanguage(lang) {
+        currentLang = lang;
+        applyStaticTranslations();
+        if (lastResponseBody) {
+          renderResponse(lastResponseBody);
+        } else if (lastErrorMessage) {
+          renderError(lastErrorMessage);
+        } else {
+          elements.fanLabel.textContent = t("fanCaption") + ": " + t("off");
+          elements.pumpLabel.textContent = t("pumpCaption") + ": " + t("off");
+        }
       }
 
       // Roadmap tasks 49-51: build the request body. rain has no UI
@@ -566,12 +683,12 @@
           });
           const body = await res.json();
           if (!res.ok) {
-            renderError(body.detail || "Request failed");
+            renderError(body.detail || t("requestFailed"));
             return;
           }
           renderResponse(body);
         } catch (error) {
-          renderError("Could not reach the bridge: " + error.message);
+          renderError(t("unreachablePrefix") + error.message);
         }
       }
 
@@ -595,10 +712,17 @@
         }
       });
       elements.sendBtn.addEventListener("click", requestSend);
+      elements.langToggleBtn.addEventListener("click", () => {
+        setLanguage(currentLang === "en" ? "ja" : "en");
+      });
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
       elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
+
+      applyStaticTranslations();
+      elements.fanLabel.textContent = t("fanCaption") + ": " + t("off");
+      elements.pumpLabel.textContent = t("pumpCaption") + ": " + t("off");
 
       // Keeps the ESP's view of these readings continuously fresh while
       // this page stays open. Necessary, not cosmetic: firmware/include/
