@@ -1,15 +1,17 @@
 """Tests for the FastAPI bridge (roadmap tasks 41, 42, 47, 48, and the
 Stage 7 irrigation fields added to /api/temperature: 49-51).
 
-Runs entirely on the host -- no physical ESP needed. httpx.post is
-monkeypatched to a fake ESP so these tests are fast, deterministic, and
-don't depend on network or hardware availability. This is the one part of
-AgriControl's Stage 4-7 work that can be genuinely executed and verified
-from this environment, unlike the firmware (no PlatformIO toolchain here).
+Runs entirely on the host -- no physical ESP or MQTT broker needed.
+mqtt_client.publish is monkeypatched to a fake ESP so these tests are
+fast, deterministic, and don't depend on network or hardware
+availability. This is the one part of AgriControl's Stage 4-7/9 work that
+can be genuinely executed and verified from this environment, unlike the
+firmware (no PlatformIO toolchain here).
 """
 from __future__ import annotations
 
-import httpx
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -44,15 +46,36 @@ def fake_esp_decision(temperature: float) -> dict:
 
 
 def install_fake_esp(monkeypatch, responder):
-    """Replaces httpx.post (as used inside backend/app.py) with a fake
-    that never touches the network."""
+    """Replaces mqtt_client.publish (as used inside backend/app.py) with a
+    fake that never touches the network. `responder(topic, payload)` must
+    return a body dict that already carries the correct "accepted" field
+    -- this fake resolves the pending request with exactly that body, the
+    same way the real ESP's response on the matching *_state topic would.
+    Correlates on the request's own sequence/request_id, since that's
+    always known (the bridge just sent it), not on the responder getting
+    it right.
+    """
 
-    def fake_post(url, json=None, timeout=None):
-        request = httpx.Request("POST", url)
-        status_code, payload = responder(url, json)
-        return httpx.Response(status_code, json=payload, request=request)
+    def fake_publish(topic, payload_str, qos=1):
+        payload = json.loads(payload_str)
+        body = responder(topic, payload)
+        if topic == app_module.SENSOR_TOPIC:
+            app_module.sensor_responses.resolve(payload["sequence"], body)
+        elif topic == app_module.FEEDBACK_TOPIC:
+            app_module.feedback_responses.resolve(payload["request_id"], body)
 
-    monkeypatch.setattr(app_module.httpx, "post", fake_post)
+    monkeypatch.setattr(app_module.mqtt_client, "publish", fake_publish)
+
+
+def install_unreachable_esp(monkeypatch):
+    """Simulates the ESP never responding at all: a publish that does
+    nothing, with the wait timeout shortened so the test doesn't have to
+    wait out the real multi-second default. This is MQTT's actual
+    "unreachable" failure mode -- there's no connection-refused exception
+    at publish time the way there was with the old httpx.post transport,
+    just silence until wait_for()'s own timeout."""
+    monkeypatch.setattr(app_module, "MQTT_RESPONSE_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(app_module.mqtt_client, "publish", lambda topic, payload_str, qos=1: None)
 
 
 class TestHealth:
@@ -68,23 +91,23 @@ class TestForwardTemperature:
     def test_forwards_correct_protocol_shape_to_esp(self, client, monkeypatch):
         captured = {}
 
-        def responder(url, payload):
-            captured["url"] = url
+        def responder(topic, payload):
+            captured["topic"] = topic
             captured["payload"] = payload
-            return 200, {"accepted": True, "sequence": payload["sequence"], "commands": fake_esp_decision(payload["values"]["temperature"])}
+            return {"accepted": True, "sequence": payload["sequence"], "commands": fake_esp_decision(payload["values"]["temperature"])}
 
         install_fake_esp(monkeypatch, responder)
 
         response = client.post("/api/temperature", json={"temperature": 40.0})
         assert response.status_code == 200
-        assert captured["url"] == f"{app_module.ESP_BASE_URL}/sensor"
+        assert captured["topic"] == app_module.SENSOR_TOPIC
         assert captured["payload"]["values"] == {"temperature": 40.0}
         assert captured["payload"]["session_id"] == app_module.session.session_id
         assert captured["payload"]["sequence"] == 1
 
     def test_sequence_increments_across_calls(self, client, monkeypatch):
-        def responder(url, payload):
-            return 200, {"accepted": True, "sequence": payload["sequence"], "commands": fake_esp_decision(payload["values"]["temperature"])}
+        def responder(topic, payload):
+            return {"accepted": True, "sequence": payload["sequence"], "commands": fake_esp_decision(payload["values"]["temperature"])}
 
         install_fake_esp(monkeypatch, responder)
 
@@ -107,17 +130,14 @@ class TestForwardTemperature:
             "reasons": ["Temperature 40.0 C is above 35.0 C"],
         }
 
-        install_fake_esp(monkeypatch, lambda url, payload: (200, esp_body))
+        install_fake_esp(monkeypatch, lambda topic, payload: esp_body)
 
         response = client.post("/api/temperature", json={"temperature": 40.0})
         assert response.status_code == 200
         assert response.json() == esp_body
 
     def test_esp_unreachable_returns_502_and_logs_event(self, client, monkeypatch):
-        def fake_post(url, json=None, timeout=None):
-            raise httpx.ConnectError("connection refused", request=httpx.Request("POST", url))
-
-        monkeypatch.setattr(app_module.httpx, "post", fake_post)
+        install_unreachable_esp(monkeypatch)
 
         response = client.post("/api/temperature", json={"temperature": 25.0})
         assert response.status_code == 502
@@ -129,7 +149,7 @@ class TestForwardTemperature:
         assert "SENT" in codes
 
     def test_esp_rejection_returns_502_and_logs_event(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (400, {"accepted": False, "error": "temperature out of range"}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": False, "error": "temperature out of range"})
 
         response = client.post("/api/temperature", json={"temperature": 999.0})
         assert response.status_code == 502
@@ -141,7 +161,7 @@ class TestForwardTemperature:
 
     def test_missing_temperature_field_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post("/api/temperature", json={})
         assert response.status_code == 422  # FastAPI/pydantic validation error
@@ -151,14 +171,14 @@ class TestForwardTemperature:
 class TestIrrigationFields:
     """Roadmap tasks 49-51: soil moisture, tank level, and rain forwarded
     alongside temperature, matching firmware/include/irrigation.h /
-    firmware/src/irrigation_slice.cpp's optional-field handling."""
+    firmware/src/mqtt_test_harness.cpp's optional-field handling."""
 
     def test_temperature_only_omits_irrigation_keys(self, client, monkeypatch):
         captured = {}
         install_fake_esp(
             monkeypatch,
-            lambda url, payload: captured.update(payload)
-            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+            lambda topic, payload: captured.update(payload)
+            or {"accepted": True, "sequence": payload["sequence"], "commands": {}},
         )
 
         client.post("/api/temperature", json={"temperature": 25.0})
@@ -171,8 +191,8 @@ class TestIrrigationFields:
         captured = {}
         install_fake_esp(
             monkeypatch,
-            lambda url, payload: captured.update(payload)
-            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+            lambda topic, payload: captured.update(payload)
+            or {"accepted": True, "sequence": payload["sequence"], "commands": {}},
         )
 
         client.post(
@@ -190,8 +210,8 @@ class TestIrrigationFields:
         captured = {}
         install_fake_esp(
             monkeypatch,
-            lambda url, payload: captured.update(payload)
-            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+            lambda topic, payload: captured.update(payload)
+            or {"accepted": True, "sequence": payload["sequence"], "commands": {}},
         )
 
         client.post("/api/temperature", json={"temperature": 20.0, "soil_moisture": 15.0})
@@ -203,8 +223,8 @@ class TestIrrigationFields:
         captured_payloads = []
         install_fake_esp(
             monkeypatch,
-            lambda url, payload: captured_payloads.append(payload)
-            or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}),
+            lambda topic, payload: captured_payloads.append(payload)
+            or {"accepted": True, "sequence": payload["sequence"], "commands": {}},
         )
 
         client.post("/api/temperature", json={"temperature": 20.0, "rain": 0})
@@ -214,7 +234,7 @@ class TestIrrigationFields:
 
     def test_non_numeric_irrigation_field_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post("/api/temperature", json={"temperature": 20.0, "soil_moisture": "wet"})
         assert response.status_code == 422
@@ -223,7 +243,7 @@ class TestIrrigationFields:
 
 class TestEvents:
     def test_events_endpoint_returns_most_recent_first(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "sequence": payload["sequence"], "commands": {}})
 
         client.post("/api/temperature", json={"temperature": 20.0})
         client.post("/api/temperature", json={"temperature": 30.0})
@@ -234,7 +254,7 @@ class TestEvents:
         assert "sequence=2" in events[0]["detail"]
 
     def test_events_respects_limit_query_param(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "sequence": payload["sequence"], "commands": {}})
 
         for temperature in range(5):
             client.post("/api/temperature", json={"temperature": float(temperature)})
@@ -245,7 +265,7 @@ class TestEvents:
 
 class TestSessionReset:
     def test_reset_issues_new_session_id_and_resets_sequence(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "sequence": payload["sequence"], "commands": {}})
 
         old_session_id = app_module.session.session_id
         client.post("/api/temperature", json={"temperature": 20.0})
@@ -256,7 +276,11 @@ class TestSessionReset:
         assert new_session_id != old_session_id
 
         captured = {}
-        install_fake_esp(monkeypatch, lambda url, payload: captured.update(payload) or (200, {"accepted": True, "sequence": payload["sequence"], "commands": {}}))
+        install_fake_esp(
+            monkeypatch,
+            lambda topic, payload: captured.update(payload)
+            or {"accepted": True, "sequence": payload["sequence"], "commands": {}},
+        )
         client.post("/api/temperature", json={"temperature": 25.0})
         assert captured["session_id"] == new_session_id
         assert captured["sequence"] == 1  # sequence restarted
@@ -266,11 +290,11 @@ class TestActuatorFeedback:
     """Roadmap task 66 / blueprint page-1 diagram's "F. Actuator Simulator":
     the website picks an actuator + fault, this bridge computes the
     simulated feedback via logic/actuator_feedback.py and forwards it to
-    the ESP's POST /feedback. These tests exercise the real simulation
-    functions (not mocked) and only fake the ESP's HTTP response."""
+    the ESP over MQTT. These tests exercise the real simulation functions
+    (not mocked) and only fake the ESP's MQTT response."""
 
     def test_fan_no_fault_matches_commanded_state(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": False}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "controller_fault_active": False})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -282,7 +306,7 @@ class TestActuatorFeedback:
         assert body["fault_code"] is None
 
     def test_pump_stuck_off_produces_fault_when_commanded_on(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": True}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "controller_fault_active": True})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -294,7 +318,7 @@ class TestActuatorFeedback:
         assert body["fault_code"] == "ACTUATOR-STUCK-OFF"
 
     def test_window_wrong_position_produces_fault_and_offset_angle(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": True}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": True, "controller_fault_active": True})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -308,10 +332,10 @@ class TestActuatorFeedback:
     def test_forwards_actuator_and_fault_code_to_esp_feedback_endpoint(self, client, monkeypatch):
         captured = {}
 
-        def responder(url, payload):
-            captured["url"] = url
+        def responder(topic, payload):
+            captured["topic"] = topic
             captured["payload"] = payload
-            return 200, {"accepted": True, "controller_fault_active": True}
+            return {"accepted": True, "controller_fault_active": True}
 
         install_fake_esp(monkeypatch, responder)
 
@@ -319,12 +343,13 @@ class TestActuatorFeedback:
             "/api/actuator/feedback",
             json={"actuator": "fan", "fault_mode": "failed_startup", "commanded_state": True},
         )
-        assert captured["url"] == f"{app_module.ESP_BASE_URL}/feedback"
-        assert captured["payload"] == {"actuator": "fan", "fault_code": "ACTUATOR-FAILED-STARTUP"}
+        assert captured["topic"] == app_module.FEEDBACK_TOPIC
+        assert captured["payload"]["actuator"] == "fan"
+        assert captured["payload"]["fault_code"] == "ACTUATOR-FAILED-STARTUP"
 
     def test_unknown_fault_mode_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -335,7 +360,7 @@ class TestActuatorFeedback:
 
     def test_unknown_actuator_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -346,7 +371,7 @@ class TestActuatorFeedback:
 
     def test_missing_commanded_state_for_fan_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post("/api/actuator/feedback", json={"actuator": "fan", "fault_mode": "none"})
         assert response.status_code == 400
@@ -354,17 +379,14 @@ class TestActuatorFeedback:
 
     def test_missing_commanded_window_deg_is_rejected_before_forwarding(self, client, monkeypatch):
         calls = []
-        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+        install_fake_esp(monkeypatch, lambda topic, payload: calls.append(payload) or {})
 
         response = client.post("/api/actuator/feedback", json={"actuator": "window", "fault_mode": "none"})
         assert response.status_code == 400
         assert calls == []
 
     def test_esp_unreachable_returns_502_and_logs_event(self, client, monkeypatch):
-        def fake_post(url, json=None, timeout=None):
-            raise httpx.ConnectError("connection refused", request=httpx.Request("POST", url))
-
-        monkeypatch.setattr(app_module.httpx, "post", fake_post)
+        install_unreachable_esp(monkeypatch)
 
         response = client.post(
             "/api/actuator/feedback",
@@ -379,7 +401,7 @@ class TestActuatorFeedback:
         assert "ACTUATOR_FEEDBACK_SIMULATED" in codes
 
     def test_esp_rejection_returns_502_and_logs_event(self, client, monkeypatch):
-        install_fake_esp(monkeypatch, lambda url, payload: (400, {"accepted": False, "error": "unknown actuator"}))
+        install_fake_esp(monkeypatch, lambda topic, payload: {"accepted": False, "error": "unknown actuator"})
 
         response = client.post(
             "/api/actuator/feedback",
@@ -413,21 +435,18 @@ class TestEndurance:
     This exercises the bridge (sequencing, event log, request/response
     handling) under sustained load against a fake ESP -- real evidence for
     the bridge's own correctness. It is not evidence of the physical ESP
-    surviving hundreds of real HTTP requests; that half of task 48 needs
+    surviving hundreds of real MQTT messages; that half of task 48 needs
     the real board and is tracked separately in docs/PROJECT_STATE.md.
     """
 
     def test_two_hundred_sequential_updates(self, client, monkeypatch):
         install_fake_esp(
             monkeypatch,
-            lambda url, payload: (
-                200,
-                {
-                    "accepted": True,
-                    "sequence": payload["sequence"],
-                    "commands": fake_esp_decision(payload["values"]["temperature"]),
-                },
-            ),
+            lambda topic, payload: {
+                "accepted": True,
+                "sequence": payload["sequence"],
+                "commands": fake_esp_decision(payload["values"]["temperature"]),
+            },
         )
 
         total_updates = 200

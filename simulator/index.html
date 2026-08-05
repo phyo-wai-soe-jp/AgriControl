@@ -4,94 +4,284 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>AgriControl Simulator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext y='20' font-size='20'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E" />
 <style>
   :root {
-    --bg: #f5f7f3;
+    --bg: #eef2ec;
+    --bg-accent: #e4ede4;
     --panel: #ffffff;
-    --ink: #182a2f;
-    --muted: #64757a;
-    --line: #d7e0dd;
-    --teal: #216c76;
-    --green: #3f7d4e;
-    --amber: #b47724;
-    --red: #b13b43;
+    --panel-border: rgba(24, 42, 47, 0.08);
+    --ink: #16262b;
+    --muted: #62767b;
+    --line: #dfe7e2;
+    --teal: #1c6b74;
+    --teal-soft: #e3f1f1;
+    --amber: #b3711f;
+    --amber-soft: #fdf1de;
+    --blue: #2f5fa8;
+    --blue-soft: #e8eefa;
+    --purple: #6a4d9c;
+    --purple-soft: #efe9f7;
+    --green: #2f7d4a;
+    --green-soft: #e4f4e8;
+    --red: #ad3b40;
+    --red-soft: #faeaea;
+    --shadow: 0 1px 2px rgba(16, 30, 33, 0.06), 0 8px 24px -12px rgba(16, 30, 33, 0.18);
+    --radius: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1614;
+      --bg-accent: #131b19;
+      --panel: #182422;
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --ink: #eaf2ee;
+      --muted: #93a7a1;
+      --line: #26332f;
+      --teal: #5fc2c9;
+      --teal-soft: #16302f;
+      --amber: #e4a75c;
+      --amber-soft: #322717;
+      --blue: #8fb3ec;
+      --blue-soft: #182236;
+      --purple: #c1a8ec;
+      --purple-soft: #251d34;
+      --green: #7fd39a;
+      --green-soft: #16301f;
+      --red: #f0999c;
+      --red-soft: #341a1b;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 28px -14px rgba(0, 0, 0, 0.6);
+    }
   }
   * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   body {
     margin: 0;
-    background: var(--bg);
+    background:
+      radial-gradient(1100px 480px at 12% -10%, var(--bg-accent), transparent),
+      var(--bg);
     color: var(--ink);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    padding: 24px;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+    padding: 28px 20px 60px;
   }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  p.sub { color: var(--muted); margin: 0 0 20px; }
+  a { color: var(--teal); }
+  code {
+    background: var(--panel-border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 0.85em;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 20px;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar h1 {
+    font-size: 1.5rem;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar .brand-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--teal), var(--green));
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex: none;
+  }
+  .topbar p.sub {
+    color: var(--muted);
+    margin: 0;
+    font-size: 0.88rem;
+    max-width: 62ch;
+  }
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    box-shadow: var(--shadow);
+    border-radius: 999px;
+    padding: 8px 16px 8px 12px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--muted);
+    flex: none;
+  }
+  .status-dot.ok { background: var(--green); animation: pulse-green 2s infinite; }
+  .status-dot.warn { background: var(--amber); }
+  .status-dot.err { background: var(--red); }
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(47, 125, 74, 0.45); }
+    70% { box-shadow: 0 0 0 7px rgba(47, 125, 74, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(47, 125, 74, 0); }
+  }
+
   .grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-    max-width: 960px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
   }
-  @media (max-width: 720px) {
-    .grid { grid-template-columns: 1fr; }
+  @media (max-width: 620px) {
+    body { padding: 20px 14px 48px; }
   }
+
   .panel {
     background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 18px;
+    border: 1px solid var(--panel-border);
+    box-shadow: var(--shadow);
+    border-radius: var(--radius);
+    padding: 20px 20px 22px;
+    position: relative;
+    overflow: hidden;
   }
-  .panel h2 { font-size: 1rem; margin: 0 0 12px; }
-  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
-  input[type="text"], input[type="number"] {
+  .panel::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--accent, var(--teal));
+  }
+  .panel--connection { --accent: var(--teal); }
+  .panel--climate { --accent: var(--amber); }
+  .panel--irrigation { --accent: var(--blue); }
+  .panel--response { --accent: var(--green); }
+  .panel--actuators { --accent: var(--purple); }
+  .panel--fault { --accent: var(--red); }
+  .panel--events { --accent: var(--muted); }
+
+  .panel h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 14px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    letter-spacing: -0.005em;
+  }
+  .panel h2 .icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent, var(--teal));
+    flex: none;
+  }
+  .panel h2 .kicker {
+    margin-left: auto;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 5px; font-weight: 500; }
+  input[type="text"], input[type="number"], select {
     width: 100%;
-    padding: 8px 10px;
+    padding: 9px 11px;
     border: 1px solid var(--line);
-    border-radius: 6px;
+    background: var(--bg);
+    color: var(--ink);
+    border-radius: 8px;
     font: inherit;
   }
-  input[type="range"] { width: 100%; }
-  .row { margin-bottom: 12px; }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus, .btn:focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 1px;
+  }
+  input[type="range"] { width: 100%; accent-color: var(--accent, var(--teal)); }
+  input[type="checkbox"] { accent-color: var(--accent, var(--teal)); }
+  .row { margin-bottom: 13px; }
+  .row:last-child { margin-bottom: 0; }
+  .inline-checkbox { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; color: var(--ink); }
+  .inline-checkbox + .inline-checkbox { margin-top: 8px; }
+
   .btn {
     background: var(--teal);
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 8px 14px;
+    border-radius: 8px;
+    padding: 9px 16px;
     font: inherit;
+    font-weight: 600;
+    font-size: 0.88rem;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    transition: transform 0.08s ease, opacity 0.15s ease;
   }
-  .btn:hover { opacity: 0.9; }
-  .btn.secondary { background: var(--muted); }
-  .temp-value { font-size: 1.6rem; font-weight: 700; }
+  .btn:hover { opacity: 0.92; }
+  .btn:active { transform: translateY(1px); }
+  .btn.secondary { background: var(--bg-accent); color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  .temp-value { font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em; }
+  .temp-value .unit { font-size: 1rem; font-weight: 600; color: var(--muted); }
+
   .badge {
     display: inline-flex;
     align-items: center;
+    gap: 5px;
     border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 0.78rem;
+    padding: 3px 11px;
+    font-size: 0.76rem;
     font-weight: 700;
   }
-  .badge.ok { background: #e5f2e8; color: var(--green); }
-  .badge.warn { background: #fff2d7; color: var(--amber); }
-  .badge.err { background: #f9e7e8; color: var(--red); }
-  .badge.idle { background: #edf1ef; color: var(--muted); }
-  .response-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.9rem; }
-  .response-grid dt { color: var(--muted); }
-  .response-grid dd { margin: 0; font-weight: 600; }
+  .badge.ok { background: var(--green-soft); color: var(--green); }
+  .badge.warn { background: var(--amber-soft); color: var(--amber); }
+  .badge.err { background: var(--red-soft); color: var(--red); }
+  .badge.idle { background: var(--bg-accent); color: var(--muted); }
+
+  .response-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+    margin: 14px 0 0;
+    font-size: 0.86rem;
+  }
+  .response-grid dt { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 2px; }
+  .response-grid dd { margin: 0; font-weight: 700; }
+
   .window-scene {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px 0;
+    padding: 10px 0 18px;
   }
   .window-frame {
-    width: 100px;
-    height: 70px;
+    width: 112px;
+    height: 78px;
     border: 4px solid var(--ink);
+    border-radius: 4px;
     position: relative;
     overflow: hidden;
-    background: #dcecee;
+    background: linear-gradient(180deg, #cfe9ec, #e8f4e8);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    .window-frame { background: linear-gradient(180deg, #223b3d, #1c2f27); }
   }
   .window-sash {
     position: absolute;
@@ -99,163 +289,239 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: #9fb8ba;
+    background: rgba(120, 150, 152, 0.55);
     border-right: 3px solid var(--ink);
     transform-origin: left center;
     transition: transform 0.4s ease;
+    backdrop-filter: blur(1px);
   }
+  .actuator-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 0;
+    font-size: 0.88rem;
+  }
+  .actuator-row + .actuator-row { border-top: 1px solid var(--line); }
   .fan-indicator {
-    width: 14px;
-    height: 14px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     display: inline-block;
-    margin-right: 6px;
+    flex: none;
   }
-  .fan-indicator.on { background: var(--green); }
+  .fan-indicator.on { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
   .fan-indicator.off { background: var(--line); }
+
   ul#eventLog {
     list-style: none;
-    margin: 0;
+    margin: 14px 0 0;
     padding: 0;
-    max-height: 220px;
+    max-height: 240px;
     overflow-y: auto;
     font-size: 0.82rem;
   }
   ul#eventLog li {
-    padding: 6px 0;
+    padding: 8px 4px;
     border-bottom: 1px solid var(--line);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
   }
-  ul#eventLog li .code { font-weight: 700; }
-  .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+  ul#eventLog li:last-child { border-bottom: none; }
+  ul#eventLog li .code {
+    font-weight: 700;
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--bg-accent);
+    color: var(--muted);
+    flex: none;
+  }
+  ul#eventLog li .code.good { background: var(--green-soft); color: var(--green); }
+  ul#eventLog li .code.bad { background: var(--red-soft); color: var(--red); }
+  ul#eventLog li .time { color: var(--muted); font-size: 0.76rem; flex: none; }
+  ul#eventLog li .detail { color: var(--ink); flex: 1 1 200px; }
+
+  .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+
+  .full-width { grid-column: 1 / -1; }
 </style>
 </head>
 <body>
-  <h1>AgriControl Simulator</h1>
-  <p class="sub">
-    Blueprint Stage 6 (roadmap tasks 43-46) and Stage 7 (tasks 49-51, 55):
-    virtual temperature, soil moisture, tank level, and rain sensors that
-    talk to the ESP through the FastAPI bridge (<code>backend/app.py</code>),
-    not directly.
-  </p>
-
-  <div class="grid">
-    <section class="panel" id="connectionPanel">
-      <h2>Connection (roadmap task 43)</h2>
-      <div class="row">
-        <label for="bridgeUrl">FastAPI bridge base URL</label>
-        <input type="text" id="bridgeUrl" value="http://127.0.0.1:8000" />
-      </div>
-      <button class="btn" id="checkHealthBtn" type="button">Check connection</button>
-      <button class="btn secondary" id="resetSessionBtn" type="button">Reset session</button>
-      <div class="row" style="margin-top: 12px;">
-        <span class="badge idle" id="connectionBadge">Not checked</span>
-      </div>
-    </section>
-
-    <section class="panel" id="temperaturePanel">
-      <h2>Virtual temperature (roadmap task 44)</h2>
-      <div class="row">
-        <input type="range" id="temperatureSlider" min="-10" max="50" step="0.5" value="25" />
-        <div class="temp-value"><span id="temperatureValue">25.0</span> &deg;C</div>
-      </div>
-      <button class="btn" id="sendBtn" type="button">Send to ESP</button>
-      <label style="margin-top: 10px;">
-        <input type="checkbox" id="autoSendCheckbox" /> Send automatically while dragging
-      </label>
-    </section>
-
-    <section class="panel" id="irrigationPanel">
-      <h2>Virtual irrigation (roadmap tasks 49-51, Stage 7)</h2>
-      <div class="row">
-        <label>
-          <input type="checkbox" id="soilMoistureEnabled" checked /> Soil moisture
-          <span id="soilMoistureValue">45</span>%
-        </label>
-        <input type="range" id="soilMoistureSlider" min="0" max="100" step="1" value="45" />
-      </div>
-      <div class="row">
-        <label>
-          <input type="checkbox" id="tankLevelEnabled" checked /> Tank level
-          <span id="tankLevelValue">70</span>%
-        </label>
-        <input type="range" id="tankLevelSlider" min="0" max="100" step="1" value="70" />
-      </div>
-      <div class="row">
-        <label><input type="checkbox" id="rainEnabled" checked /> Send rain reading</label>
-        <label style="margin-left: 16px;"><input type="checkbox" id="rainToggle" /> Raining now</label>
-      </div>
-      <p class="reasons" style="margin: 4px 0 0;">
-        Unchecking a "Send" checkbox omits that field entirely (matching
-        firmware/include/irrigation.h's "unavailable reading" handling), it
-        does not send 0.
-      </p>
-    </section>
-
-    <section class="panel" id="responsePanel">
-      <h2>ESP response (roadmap task 45)</h2>
-      <span class="badge idle" id="responseBadge">No response yet</span>
-      <dl class="response-grid" id="responseGrid"></dl>
-      <div class="reasons" id="responseReasons"></div>
-    </section>
-
-    <section class="panel" id="windowPanel">
-      <h2>Virtual window, fan &amp; pump (roadmap tasks 46, 55)</h2>
-      <div class="window-scene">
-        <div class="window-frame">
-          <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
-        </div>
-      </div>
-      <div class="row">
-        <span class="fan-indicator off" id="fanIndicator"></span>
-        <span id="fanLabel">Fan: off</span>
-      </div>
+  <div class="page">
+    <div class="topbar">
       <div>
-        <span class="fan-indicator off" id="pumpIndicator"></span>
-        <span id="pumpLabel">Pump: off</span>
+        <h1>
+          <span class="brand-mark" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/></svg>
+          </span>
+          AgriControl Simulator
+        </h1>
+        <p class="sub">
+          Blueprint Stage 6-9: virtual temperature, soil moisture, tank level, rain, and
+          actuator-fault sensors that talk to the real ESP32 through the FastAPI bridge
+          (<code>backend/app.py</code>), never directly.
+        </p>
       </div>
-    </section>
+      <span class="status-pill">
+        <span class="status-dot idle" id="topbarStatusDot"></span>
+        <span id="topbarStatusText">Not connected</span>
+      </span>
+    </div>
 
-    <section class="panel" id="actuatorFaultPanel">
-      <h2>Actuator fault simulator (roadmap task 66)</h2>
-      <p class="reasons" style="margin: 0 0 10px;">
-        Simulates feedback for the chosen actuator (via
-        <code>logic/actuator_feedback.py</code>, unmodified here) and sends
-        it through the bridge to the ESP's <code>/feedback</code> endpoint,
-        so the ESP's own safety supervisor reacts through
-        <code>controller_fault</code> -- closing the loop the blueprint's
-        page-1 diagram depicts ("F. Actuator Simulator").
-      </p>
-      <div class="row">
-        <label for="faultActuatorSelect">Actuator</label>
-        <select id="faultActuatorSelect">
-          <option value="fan">Fan</option>
-          <option value="pump">Pump</option>
-          <option value="window">Window</option>
-        </select>
-      </div>
-      <div class="row">
-        <label for="faultModeSelect">Fault mode</label>
-        <select id="faultModeSelect"></select>
-      </div>
-      <div class="row" id="faultCommandedStateRow">
-        <label><input type="checkbox" id="faultCommandedState" /> Commanded on</label>
-      </div>
-      <div class="row" id="faultCommandedDegRow" style="display: none;">
-        <label for="faultCommandedDeg">Commanded window angle</label>
-        <input type="number" id="faultCommandedDeg" min="0" max="180" value="90" />
-      </div>
-      <button class="btn" id="sendFaultBtn" type="button">Send fault to ESP</button>
-      <div class="row" style="margin-top: 12px;">
-        <span class="badge idle" id="faultResultBadge">No feedback sent yet</span>
-      </div>
-      <dl class="response-grid" id="faultResultGrid"></dl>
-    </section>
+    <div class="grid">
+      <section class="panel panel--connection" id="connectionPanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 16.05a6 6 0 0 1 7 0"/><path d="M12 20h.01"/></svg>
+          Connection
+          <span class="kicker">task 43</span>
+        </h2>
+        <div class="row">
+          <label for="bridgeUrl">FastAPI bridge base URL</label>
+          <input type="text" id="bridgeUrl" value="https://phyowaisoe.com/agricontrol/bridge" />
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="checkHealthBtn" type="button">Check connection</button>
+          <button class="btn secondary" id="resetSessionBtn" type="button">Reset session</button>
+        </div>
+        <div class="row" style="margin-top: 14px; margin-bottom: 0;">
+          <span class="badge idle" id="connectionBadge">Not checked</span>
+        </div>
+      </section>
 
-    <section class="panel" id="eventLogPanel" style="grid-column: 1 / -1;">
-      <h2>Event log (roadmap task 47, bridge-side)</h2>
-      <button class="btn secondary" id="refreshEventsBtn" type="button">Refresh</button>
-      <ul id="eventLog"></ul>
-    </section>
+      <section class="panel panel--climate" id="temperaturePanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
+          Virtual temperature
+          <span class="kicker">task 44</span>
+        </h2>
+        <div class="row">
+          <input type="range" id="temperatureSlider" min="-10" max="50" step="0.5" value="25" />
+          <div class="temp-value"><span id="temperatureValue">25.0</span><span class="unit">&deg;C</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="sendBtn" type="button">Send to ESP</button>
+        </div>
+        <label class="inline-checkbox" style="margin-top: 12px;">
+          <input type="checkbox" id="autoSendCheckbox" /> Send automatically while dragging
+        </label>
+      </section>
+
+      <section class="panel panel--irrigation" id="irrigationPanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/></svg>
+          Virtual irrigation
+          <span class="kicker">tasks 49-51</span>
+        </h2>
+        <div class="row">
+          <label class="inline-checkbox">
+            <input type="checkbox" id="soilMoistureEnabled" checked /> Soil moisture <span id="soilMoistureValue">45</span>%
+          </label>
+          <input type="range" id="soilMoistureSlider" min="0" max="100" step="1" value="45" />
+        </div>
+        <div class="row">
+          <label class="inline-checkbox">
+            <input type="checkbox" id="tankLevelEnabled" checked /> Tank level <span id="tankLevelValue">70</span>%
+          </label>
+          <input type="range" id="tankLevelSlider" min="0" max="100" step="1" value="70" />
+        </div>
+        <div class="row">
+          <label class="inline-checkbox"><input type="checkbox" id="rainEnabled" checked /> Send rain reading</label>
+          <label class="inline-checkbox"><input type="checkbox" id="rainToggle" /> Raining now</label>
+        </div>
+        <p class="reasons">
+          Unchecking a "Send" checkbox omits that field entirely (matching
+          <code>firmware/include/irrigation.h</code>'s "unavailable reading" handling) --
+          it does not send 0.
+        </p>
+      </section>
+
+      <section class="panel panel--response" id="responsePanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          ESP response
+          <span class="kicker">task 45</span>
+        </h2>
+        <span class="badge idle" id="responseBadge">No response yet</span>
+        <dl class="response-grid" id="responseGrid"></dl>
+        <div class="reasons" id="responseReasons"></div>
+      </section>
+
+      <section class="panel panel--actuators" id="windowPanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg>
+          Window, fan &amp; pump
+          <span class="kicker">tasks 46, 55</span>
+        </h2>
+        <div class="window-scene">
+          <div class="window-frame">
+            <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
+          </div>
+        </div>
+        <div class="actuator-row">
+          <span class="fan-indicator off" id="fanIndicator"></span>
+          <span id="fanLabel">Fan: off</span>
+        </div>
+        <div class="actuator-row">
+          <span class="fan-indicator off" id="pumpIndicator"></span>
+          <span id="pumpLabel">Pump: off</span>
+        </div>
+      </section>
+
+      <section class="panel panel--fault" id="actuatorFaultPanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          Actuator fault simulator
+          <span class="kicker">task 66</span>
+        </h2>
+        <p class="reasons" style="margin: 0 0 14px;">
+          Simulates feedback for the chosen actuator (via <code>logic/actuator_feedback.py</code>,
+          unmodified here) and sends it through the bridge to the ESP's <code>/feedback</code>
+          endpoint, so the ESP's own safety supervisor reacts through <code>controller_fault</code>
+          -- closing the loop the blueprint's page-1 diagram depicts ("F. Actuator Simulator").
+        </p>
+        <div class="row">
+          <label for="faultActuatorSelect">Actuator</label>
+          <select id="faultActuatorSelect">
+            <option value="fan">Fan</option>
+            <option value="pump">Pump</option>
+            <option value="window">Window</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="faultModeSelect">Fault mode</label>
+          <select id="faultModeSelect"></select>
+        </div>
+        <div class="row" id="faultCommandedStateRow">
+          <label class="inline-checkbox"><input type="checkbox" id="faultCommandedState" /> Commanded on</label>
+        </div>
+        <div class="row" id="faultCommandedDegRow" style="display: none;">
+          <label for="faultCommandedDeg">Commanded window angle</label>
+          <input type="number" id="faultCommandedDeg" min="0" max="180" value="90" />
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="sendFaultBtn" type="button">Send fault to ESP</button>
+        </div>
+        <div class="row" style="margin-top: 14px; margin-bottom: 0;">
+          <span class="badge idle" id="faultResultBadge">No feedback sent yet</span>
+        </div>
+        <dl class="response-grid" id="faultResultGrid"></dl>
+      </section>
+
+      <section class="panel panel--events full-width" id="eventLogPanel">
+        <h2>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+          Event log
+          <span class="kicker">task 47, bridge-side</span>
+        </h2>
+        <div class="btn-row">
+          <button class="btn secondary" id="refreshEventsBtn" type="button">Refresh</button>
+        </div>
+        <ul id="eventLog"></ul>
+      </section>
+    </div>
   </div>
 
   <script>
@@ -267,6 +533,8 @@
         checkHealthBtn: document.getElementById("checkHealthBtn"),
         resetSessionBtn: document.getElementById("resetSessionBtn"),
         connectionBadge: document.getElementById("connectionBadge"),
+        topbarStatusDot: document.getElementById("topbarStatusDot"),
+        topbarStatusText: document.getElementById("topbarStatusText"),
         temperatureSlider: document.getElementById("temperatureSlider"),
         temperatureValue: document.getElementById("temperatureValue"),
         sendBtn: document.getElementById("sendBtn"),
@@ -307,6 +575,14 @@
       function setBadge(el, text, tone) {
         el.textContent = text;
         el.className = "badge " + tone;
+      }
+
+      // Mirrors the connection badge's tone into the always-visible topbar
+      // pill, so connection state is legible without scrolling to the
+      // Connection panel.
+      function setTopbarStatus(text, tone) {
+        elements.topbarStatusText.textContent = text;
+        elements.topbarStatusDot.className = "status-dot " + tone;
       }
 
       // Roadmap task 46: virtual window. 10deg (closed) -> 0% open,
@@ -401,12 +677,16 @@
           const res = await fetch(bridgeUrl() + "/api/health");
           const body = await res.json();
           if (res.ok && body.status === "ok") {
-            setBadge(elements.connectionBadge, "Connected (session " + body.session_id.slice(0, 8) + "…)", "ok");
+            const text = "Connected (session " + body.session_id.slice(0, 8) + "…)";
+            setBadge(elements.connectionBadge, text, "ok");
+            setTopbarStatus(text, "ok");
           } else {
             setBadge(elements.connectionBadge, "Unexpected response", "warn");
+            setTopbarStatus("Unexpected response", "warn");
           }
         } catch (error) {
           setBadge(elements.connectionBadge, "Unreachable", "err");
+          setTopbarStatus("Unreachable", "err");
         }
       }
 
@@ -417,7 +697,18 @@
           await refreshEvents();
         } catch (error) {
           setBadge(elements.connectionBadge, "Unreachable", "err");
+          setTopbarStatus("Unreachable", "err");
         }
+      }
+
+      // Event codes ending in these suffixes render as a red "bad" pill;
+      // ACCEPTED-style codes render green; everything else stays neutral.
+      // Purely presentational -- does not change what data is fetched or
+      // stored, only how the existing event log is displayed.
+      function codeTone(code) {
+        if (/REJECTED|UNREACHABLE|ERROR/.test(code)) return "bad";
+        if (/ACCEPTED/.test(code)) return "good";
+        return "";
       }
 
       async function refreshEvents() {
@@ -428,7 +719,8 @@
           for (const item of items) {
             const li = document.createElement("li");
             const time = new Date(item.timestamp_ms).toLocaleTimeString();
-            li.innerHTML = `<span class="code">${item.code}</span> - ${time} - ${item.detail}`;
+            const tone = codeTone(item.code);
+            li.innerHTML = `<span class="code${tone ? " " + tone : ""}">${item.code}</span><span class="time">${time}</span><span class="detail">${item.detail}</span>`;
             elements.eventLog.appendChild(li);
           }
         } catch (error) {

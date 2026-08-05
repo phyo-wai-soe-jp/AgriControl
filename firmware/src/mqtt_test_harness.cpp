@@ -76,8 +76,12 @@ constexpr float kPercentMin = 0.0f;
 constexpr float kPercentMax = 100.0f;
 
 constexpr bool kEmergencyStopActive = false;
-constexpr bool kControllerFaultActive = false;
 constexpr bool kConfiguredSafeFanState = false;
+
+// Roadmap task 66, ported from irrigation_slice.cpp's identical fix: this
+// was a constexpr false (permanently disabled at compile time) until the
+// MQTT feedback topic below existed to actually set it.
+bool controllerFaultActive = false;
 
 // LEDC-backed buzzer, not tone()/noTone() -- see irrigation_slice.cpp's
 // identical comment for why.
@@ -105,6 +109,13 @@ void serviceBuzzer(unsigned long nowMs) {
 
 const char* kSensorTopic = "agricontrol/sensor";
 const char* kStateTopic = "agricontrol/state";
+// Roadmap task 66: the MQTT equivalent of irrigation_slice.cpp's POST
+// /feedback and its response. Kept as separate topics from
+// kSensorTopic/kStateTopic (rather than overloading the existing pair)
+// so a subscriber never has to guess which message shape a given
+// agricontrol/state payload is.
+const char* kFeedbackTopic = "agricontrol/feedback";
+const char* kFeedbackStateTopic = "agricontrol/feedback_state";
 
 WiFiClientSecure mqttSecureClient;
 PubSubClient mqttClient(mqttSecureClient);
@@ -299,7 +310,7 @@ void handleSensorMessage(const String& body) {
   // shared.recovery.stableCommunicationConfirmed().
   bool dataStale = shared.system.mode() == Mode::WARNING || shared.system.mode() == Mode::RECOVERY;
   FullSafetyResult safety = evaluateFullSafety(
-      decision, hasTank, tankPercent, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup,
+      decision, hasTank, tankPercent, kEmergencyStopActive, controllerFaultActive, dataStale, isStartup,
       kConfiguredSafeFanState);
 
   previousPumpRequested = decision.requestedPump;
@@ -344,11 +355,70 @@ void handleSensorMessage(const String& body) {
   lastPublishedSequence = sequence;
 }
 
+void publishFeedbackError(long requestId, bool haveRequestId, const char* error) {
+  JsonDocument doc;
+  doc["accepted"] = false;
+  doc["error"] = error;
+  if (haveRequestId) doc["request_id"] = requestId;
+  String body;
+  serializeJson(doc, body);
+  mqttClient.publish(kFeedbackStateTopic, body.c_str());
+}
+
+// Roadmap task 66: MQTT equivalent of irrigation_slice.cpp's
+// handleFeedbackPost(). Deliberately does not call rejectAndLog() (which
+// touches shared.recovery, meant for sensor-message staleness recovery,
+// not this endpoint) -- mirrors that file's same reasoning exactly.
+void handleFeedbackMessage(const String& body) {
+  unsigned long nowMs = millis();
+
+  JsonDocument doc;
+  DeserializationError parseError = deserializeJson(doc, body);
+  if (parseError) {
+    publishFeedbackError(0, false, "invalid JSON");
+    shared.events.push(nowMs, "FEEDBACK_REJECTED", String("Feedback JSON parse error: ") + parseError.c_str());
+    return;
+  }
+
+  bool haveRequestId = doc["request_id"].is<long>();
+  long requestId = haveRequestId ? doc["request_id"].as<long>() : 0;
+
+  if (!doc["actuator"].is<const char*>()) {
+    publishFeedbackError(requestId, haveRequestId, "missing or invalid actuator");
+    shared.events.push(nowMs, "FEEDBACK_REJECTED", "Missing or invalid feedback actuator field");
+    return;
+  }
+  const char* actuator = doc["actuator"];
+
+  bool faultPresent = doc["fault_code"].is<const char*>();
+  controllerFaultActive = faultPresent;
+
+  if (faultPresent) {
+    const char* faultCode = doc["fault_code"];
+    shared.events.push(nowMs, "FEEDBACK_FAULT", String(actuator) + ": " + faultCode);
+  } else {
+    shared.events.push(nowMs, "FEEDBACK_FAULT_CLEARED", actuator);
+  }
+
+  JsonDocument response;
+  response["accepted"] = true;
+  if (haveRequestId) response["request_id"] = requestId;
+  response["controller_fault_active"] = controllerFaultActive;
+  String responseBody;
+  serializeJson(response, responseBody);
+  mqttClient.publish(kFeedbackStateTopic, responseBody.c_str());
+}
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String body;
   body.reserve(length);
   for (unsigned int i = 0; i < length; i++) body += static_cast<char>(payload[i]);
-  handleSensorMessage(body);
+
+  if (strcmp(topic, kFeedbackTopic) == 0) {
+    handleFeedbackMessage(body);
+  } else {
+    handleSensorMessage(body);
+  }
 }
 
 // Blocking -- only safe to call from setup(). Calling this from loop()
@@ -412,6 +482,11 @@ void connectMqtt() {
     Serial.print(kSensorTopic);
     Serial.print(" returned: ");
     Serial.println(subscribed ? "true" : "false");
+    bool feedbackSubscribed = mqttClient.subscribe(kFeedbackTopic, 1);
+    Serial.print("Subscribe to ");
+    Serial.print(kFeedbackTopic);
+    Serial.print(" returned: ");
+    Serial.println(feedbackSubscribed ? "true" : "false");
     shared.events.push(millis(), "MQTT_CONNECTED", kSensorTopic);
   } else {
     Serial.print("MQTT connect failed, rc=");

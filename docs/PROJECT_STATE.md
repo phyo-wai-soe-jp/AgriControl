@@ -71,6 +71,118 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-06 JST (architecture change: bridge<->ESP transport switched from HTTP+tunnel to MQTT, at the owner's request)
+
+Agent: agent-05-backend, agent-07-firmware (Claude Sonnet 5).
+
+The owner asked to redesign `simulator/index.html` (done separately, see
+below) and explicitly asked to switch the bridge<->ESP transport to MQTT.
+The previous entry had just gotten the public bridge working via a
+FastAPI backend on the VPS reaching the ESP through a persistent reverse
+SSH tunnel from this Mac (`ssh -R 18011:192.168.0.11:80`) -- functional,
+but fragile: it depended on this Mac staying on and network-reachable,
+and needed a bespoke tunnel just to work around the ESP sitting behind a
+home NAT. MQTT solves that NAT problem natively (the ESP makes an
+outbound connection to the broker, same as the bridge does), and the
+broker (Mosquitto) was already running on the same VPS -- so this
+actually *simplifies* the deployment, not just changes it.
+
+**Website redesign** (`simulator/index.html`): full visual overhaul to a
+card-based dashboard look -- color-coded panel accents, inline SVG icons,
+a live pulsing connection indicator in a persistent top bar, styled
+event-log entries (green/red pills for accepted/rejected codes), refined
+typography and spacing, light/dark theme support via
+`prefers-color-scheme`. Every existing element `id` was kept identical
+and the `<script>` block's logic is functionally unchanged (two small,
+additive enhancements: a topbar status mirror, and event-log color
+coding) -- verified via `node --check` (JS syntax), a full `id` cross-
+reference check (no `getElementById` call targeting a missing id), and a
+live jsdom run against the real running bridge exercising connection
+check, temperature send, and the actuator-fault simulator end-to-end.
+
+**Firmware** (`firmware/src/mqtt_test_harness.cpp`): ported the same
+Stage 9 fix already applied to `irrigation_slice.cpp` -- `kControllerFaultActive`
+was a `constexpr bool` (permanently `false`, unreachable) here too. Added
+a real mutable `controllerFaultActive` flag, a new `agricontrol/feedback`
+subscription / `agricontrol/feedback_state` publish pair
+(`handleFeedbackMessage()`, mirroring `irrigation_slice.cpp`'s
+`handleFeedbackPost()` field-for-field, correlated by an echoed
+`request_id` instead of an HTTP response). Compiled clean
+(`pio run -e mqtt_test_harness`) and flashed to the real board.
+
+**Backend** (`backend/app.py`): replaced `httpx.post()`-to-the-ESP with
+`paho-mqtt`. Added `PendingResponses`, a small correlation helper
+(`wait_for(key, timeout)` / `resolve(key, result)`, thread-safe, checks
+for an already-resolved result before blocking so a response that arrives
+before `wait_for()` is even called -- as happens in every test's
+synchronous fake `publish()` -- isn't a lost-wakeup race) used for both
+`agricontrol/sensor`->`agricontrol/state` (keyed by `sequence`, already
+existed) and the new `agricontrol/feedback`->`agricontrol/feedback_state`
+(keyed by a new `request_id` counter). MQTT client construction (no
+network I/O) happens at import time so tests can safely import the
+module; the actual `connect()`/`subscribe()`/`loop_start()` happen in a
+FastAPI `lifespan` handler, so tests that never trigger the lifespan
+(a bare `TestClient(app)`, not used as a context manager) never touch a
+real broker. The browser-facing HTTP API is completely unchanged --
+`POST /api/temperature` and `POST /api/actuator/feedback` have the exact
+same request/response shapes as before; only the transport underneath
+changed. `httpx` dropped from `backend/requirements.txt`, `paho-mqtt`
+added.
+
+**Tests rewritten, not just patched over**: `backend/tests/test_app.py`
+and `test_scenarios.py`'s `install_fake_esp`/`install_responder` helpers
+now monkeypatch `mqtt_client.publish` instead of `httpx.post`, resolving
+the matching `PendingResponses` entry synchronously to stand in for the
+MQTT round trip. The "ESP unreachable" tests were re-thought, not just
+renamed: over MQTT there's no connection-refused exception at publish
+time the way there was with HTTP to an unreachable host -- the real
+failure mode is silence, so those tests now install a no-op `publish()`
+and shorten `MQTT_RESPONSE_TIMEOUT_SECONDS` so the real timeout path is
+exercised quickly rather than faked around. `tools/mqtt_hardware_verify.py`
+updated to send the now-required `session_id` field and gained a
+`--feedback` mode for the new topic pair. Evidence:
+`python3 -m unittest discover -s tests` -> 101 passed (up from 99);
+`python3 -m pytest backend/tests/` -> 35 passed, all still green through
+the rewrite.
+
+**Server-side changes** (`phyowaisoe-server`):
+- Mosquitto's `acl.conf`: `agricontrol-test-harness`'s two explicit topic
+  grants replaced with a single `topic readwrite agricontrol/#` (still
+  scoped away from the `esp32-device`/`dashboard-backend` users' own
+  `esp32/*` topics) so new topics under this prefix don't need a repeated
+  ACL edit. Reapplied via `chown mosquitto:mosquitto` + `chmod 0700` +
+  full `systemctl restart mosquitto` (a `reload` alone was already proven
+  unreliable for ACL changes earlier this project).
+- `agricontrol-bridge.service` (systemd): `AGRICONTROL_ESP_BASE_URL`
+  removed; MQTT credentials now come from `/etc/agricontrol-bridge.env`
+  (root:root, mode 600, referenced via `EnvironmentFile=`) rather than
+  being embedded directly in the world-readable unit file.
+- The reverse SSH tunnel (`~/Library/LaunchAgents/com.agricontrol.tunnel.plist`
+  on this Mac, forwarding VPS port 18011 to the ESP's LAN address) is no
+  longer needed and was unloaded and removed.
+- The old ad-hoc `nohup uvicorn ... &` bridge process running directly on
+  this Mac (from the earlier tunnel-based deployment) was stopped --
+  superseded by the VPS-hosted systemd service.
+
+**Verified end-to-end on real hardware**, through the actual public URL,
+not just component-by-component: `https://phyowaisoe.com/agricontrol/simulator/`
+(fetched live, exercised via jsdom exactly as a real browser would, using
+its own default bridge-URL field -- no manual configuration) ->
+`https://phyowaisoe.com/agricontrol/bridge` (the VPS-hosted FastAPI
+bridge) -> Mosquitto (`esp32.phyowaisoe.com:8883`) -> the real ESP32
+board, for both `POST /api/temperature` (accepted, correct decision) and
+`POST /api/actuator/feedback` (a `pump`/`stuck_off` fault produced
+`controller_fault_active: true` on the real board, then correctly cleared).
+
+Status updates: none -- this is a transport/infrastructure change to
+already-`done` Stage 6/9 work (tasks 42, 66), not a new or reopened
+roadmap task. No `data/progress-baseline.json` changes.
+
+Next: the old direct-HTTP `irrigation_slice.cpp` firmware and the FastAPI
+bridge's HTTP-based deployment path still exist in the repo/history for
+anyone testing purely on a local network without the VPS/broker in the
+loop -- not removed, just no longer what's deployed publicly.
+
 Date: 2026-08-06 JST (fixed a real session/sequence bug found while deploying the simulator publicly)
 
 Agent: agent-05-backend (Claude Sonnet 5).

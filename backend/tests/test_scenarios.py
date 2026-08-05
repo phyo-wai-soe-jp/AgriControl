@@ -27,11 +27,11 @@ input wasn't actually wired to this state at all.
 """
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
-import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -179,12 +179,24 @@ def real_esp_responder_with_recovery(initial_mode: Mode = Mode.AUTOMATIC) -> Cal
 
 
 def install_responder(monkeypatch, responder: Callable[[str, dict], Tuple[int, dict]]) -> None:
-    def fake_post(url, json=None, timeout=None):
-        request = httpx.Request("POST", url)
-        status_code, payload = responder(url, json)
-        return httpx.Response(status_code, json=payload, request=request)
+    """Installs `responder` as a fake ESP by monkeypatching mqtt_client.publish
+    so a publish to SENSOR_TOPIC/FEEDBACK_TOPIC synchronously resolves the
+    matching PendingResponses entry, standing in for the real MQTT round
+    trip. Correlates on the *request's own* sequence/request_id (which the
+    bridge already knows, having just sent it) rather than trusting the
+    responder's reply to echo it back correctly -- the same thing the real
+    ESP does, but not something a test fake should have to get right too.
+    """
 
-    monkeypatch.setattr(app_module.httpx, "post", fake_post)
+    def fake_publish(topic, payload_str, qos=1):
+        payload = json.loads(payload_str)
+        _, body = responder(topic, payload)
+        if topic == app_module.SENSOR_TOPIC:
+            app_module.sensor_responses.resolve(payload["sequence"], body)
+        elif topic == app_module.FEEDBACK_TOPIC:
+            app_module.feedback_responses.resolve(payload["request_id"], body)
+
+    monkeypatch.setattr(app_module.mqtt_client, "publish", fake_publish)
 
 
 @dataclass
@@ -333,13 +345,15 @@ def test_recovery_requires_stable_valid_messages_through_the_bridge(client, monk
 
 def test_communication_loss_returns_502_and_logs_event(client, monkeypatch):
     """Roadmap task 58's communication-loss scenario: the ESP is entirely
-    unreachable (not just rejecting the message), matching
-    backend/app.py's httpx.RequestError handling."""
-
-    def fake_post(url, json=None, timeout=None):
-        raise httpx.ConnectError("connection refused", request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(app_module.httpx, "post", fake_post)
+    unreachable. Over MQTT this isn't a connection exception at publish
+    time (a publish to a connected broker essentially always succeeds) --
+    the real failure mode is silence: nothing ever arrives on
+    STATE_TOPIC, and the bridge's own wait_for() timeout is what surfaces
+    it as 502/ESP_UNREACHABLE. Simulated here by a fake publish() that
+    does nothing, with the timeout shortened so the test doesn't have to
+    actually wait out the real multi-second default."""
+    monkeypatch.setattr(app_module, "MQTT_RESPONSE_TIMEOUT_SECONDS", 0.05)
+    monkeypatch.setattr(app_module.mqtt_client, "publish", lambda topic, payload_str, qos=1: None)
 
     started = time.monotonic()
     response = client.post("/api/temperature", json={"temperature": 25.0})
