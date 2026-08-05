@@ -106,35 +106,6 @@
     color: white;
     flex: none;
   }
-  .status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    box-shadow: var(--shadow);
-    border-radius: 999px;
-    padding: 8px 16px 8px 12px;
-    font-size: 0.82rem;
-    font-weight: 600;
-    white-space: nowrap;
-  }
-  .status-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--muted);
-    flex: none;
-  }
-  .status-dot.ok { background: var(--green); animation: pulse-green 2s infinite; }
-  .status-dot.warn { background: var(--amber); }
-  .status-dot.err { background: var(--red); }
-  @keyframes pulse-green {
-    0% { box-shadow: 0 0 0 0 rgba(47, 125, 74, 0.45); }
-    70% { box-shadow: 0 0 0 7px rgba(47, 125, 74, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(47, 125, 74, 0); }
-  }
-
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -160,7 +131,6 @@
     height: 3px;
     background: var(--accent, var(--teal));
   }
-  .panel--connection { --accent: var(--teal); }
   .panel--climate { --accent: var(--amber); }
   .panel--irrigation { --accent: var(--blue); }
   .panel--response { --accent: var(--green); }
@@ -344,26 +314,9 @@
           AgriControl Simulator
         </h1>
       </div>
-      <span class="status-pill">
-        <span class="status-dot idle" id="topbarStatusDot"></span>
-        <span id="topbarStatusText">Not connected</span>
-      </span>
     </div>
 
     <div class="grid">
-      <section class="panel panel--connection" id="connectionPanel">
-        <h2>
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 16.05a6 6 0 0 1 7 0"/><path d="M12 20h.01"/></svg>
-          Connection
-        </h2>
-        <div class="btn-row">
-          <button class="btn secondary" id="resetSessionBtn" type="button">Reset session</button>
-        </div>
-        <div class="row" style="margin-top: 14px; margin-bottom: 0;">
-          <span class="badge idle" id="connectionBadge">Not checked</span>
-        </div>
-      </section>
-
       <section class="panel panel--climate" id="temperaturePanel">
         <h2>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
@@ -461,10 +414,6 @@
       const BRIDGE_URL = "https://phyowaisoe.com/agricontrol/bridge";
 
       const elements = {
-        resetSessionBtn: document.getElementById("resetSessionBtn"),
-        connectionBadge: document.getElementById("connectionBadge"),
-        topbarStatusDot: document.getElementById("topbarStatusDot"),
-        topbarStatusText: document.getElementById("topbarStatusText"),
         temperatureSlider: document.getElementById("temperatureSlider"),
         temperatureValue: document.getElementById("temperatureValue"),
         sendBtn: document.getElementById("sendBtn"),
@@ -496,14 +445,6 @@
       function setBadge(el, text, tone) {
         el.textContent = text;
         el.className = "badge " + tone;
-      }
-
-      // Mirrors the connection badge's tone into the always-visible topbar
-      // pill, so connection state is legible without scrolling to the
-      // Connection panel.
-      function setTopbarStatus(text, tone) {
-        elements.topbarStatusText.textContent = text;
-        elements.topbarStatusDot.className = "status-dot " + tone;
       }
 
       // Roadmap task 46: virtual window. 10deg (closed) -> 0% open,
@@ -593,35 +534,6 @@
         refreshEvents();
       }
 
-      async function checkHealth() {
-        try {
-          const res = await fetch(bridgeUrl() + "/api/health");
-          const body = await res.json();
-          if (res.ok && body.status === "ok") {
-            const text = "Connected (session " + body.session_id.slice(0, 8) + "…)";
-            setBadge(elements.connectionBadge, text, "ok");
-            setTopbarStatus(text, "ok");
-          } else {
-            setBadge(elements.connectionBadge, "Unexpected response", "warn");
-            setTopbarStatus("Unexpected response", "warn");
-          }
-        } catch (error) {
-          setBadge(elements.connectionBadge, "Unreachable", "err");
-          setTopbarStatus("Unreachable", "err");
-        }
-      }
-
-      async function resetSession() {
-        try {
-          await fetch(bridgeUrl() + "/api/session/reset", { method: "POST" });
-          await checkHealth();
-          await refreshEvents();
-        } catch (error) {
-          setBadge(elements.connectionBadge, "Unreachable", "err");
-          setTopbarStatus("Unreachable", "err");
-        }
-      }
-
       // Event codes ending in these suffixes render as a red "bad" pill;
       // ACCEPTED-style codes render green; everything else stays neutral.
       // Purely presentational -- does not change what data is fetched or
@@ -669,17 +581,11 @@
         }
       });
       elements.sendBtn.addEventListener("click", sendTemperature);
-      elements.resetSessionBtn.addEventListener("click", resetSession);
       elements.refreshEventsBtn.addEventListener("click", refreshEvents);
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
       elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
-
-      // No "Check connection" button anymore -- check automatically on
-      // load so the connection badge is meaningful without requiring a
-      // click first.
-      checkHealth();
     })();
   </script>
 </body>
