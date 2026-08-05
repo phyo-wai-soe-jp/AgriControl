@@ -49,8 +49,24 @@ constexpr float kPercentMin = 0.0f;
 constexpr float kPercentMax = 100.0f;
 
 constexpr bool kEmergencyStopActive = false;
-constexpr bool kControllerFaultActive = false;
 constexpr bool kConfiguredSafeFanState = false;
+
+// Roadmap task 66 ("make the ESP respond to feedback faults"), built for
+// real 2026-08-05: this was a compile-time constexpr false, meaning
+// nothing could ever actually set it -- the safety supervisor's
+// controller_fault input was permanently disabled at the firmware level,
+// regardless of anything logic/actuator_feedback.py's host tests proved.
+// Now a real mutable flag, set by POST /feedback (see
+// handleFeedbackPost() below) -- the website's actuator simulator calls
+// backend/app.py's POST /api/actuator/feedback, which computes a
+// simulated fault using logic/actuator_feedback.py and forwards the
+// result here, closing the loop the blueprint's page-1 diagram depicts
+// ("F. Actuator Simulator" -> "feedback/faults" -> "C. ESP32-C3
+// Controller"). Deliberately sticky: stays true until a later /feedback
+// call explicitly reports fault_code=null, matching the blueprint's own
+// recovery chain ("... -> Clear fault -> Resume automatic operation") --
+// a fault should never silently self-clear.
+bool controllerFaultActive = false;
 
 // Roadmap-hardening fix, ported from mqtt_test_harness.cpp 2026-08-05
 // after being found and validated there first: minimum gap between
@@ -304,7 +320,7 @@ void handleSensorPost() {
   // instantaneous communication state -- is the correct signal here.
   bool dataStale = shared.system.mode() == Mode::WARNING || shared.system.mode() == Mode::RECOVERY;
   FullSafetyResult safety = evaluateFullSafety(
-      decision, hasTank, tankPercent, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup,
+      decision, hasTank, tankPercent, kEmergencyStopActive, controllerFaultActive, dataStale, isStartup,
       kConfiguredSafeFanState);
 
   previousPumpRequested = decision.requestedPump;
@@ -350,6 +366,77 @@ void handleSensorPost() {
   server.send(200, "application/json", responseBody);
 }
 
+// Rejects a malformed /feedback request without touching sensor-message
+// recovery tracking -- rejectAndLog() (used by handleSensorPost) also
+// calls shared.recovery.recordFailure(), which is specifically about
+// sensor-message staleness recovery (roadmap tasks 27/28) and has nothing
+// to do with this separate endpoint; reusing it here would incorrectly
+// reset that unrelated streak on every malformed feedback request.
+void rejectFeedback(int code, const char* error, unsigned long nowMs, const String& detail) {
+  sendJsonError(code, error);
+  shared.events.push(nowMs, "FEEDBACK_REJECTED", detail);
+}
+
+// Roadmap task 66, built for real 2026-08-05: closes the loop the
+// blueprint's page-1 diagram depicts ("F. Actuator Simulator" ->
+// "feedback/faults" -> "C. ESP32-C3 Controller"). Called by
+// backend/app.py's POST /api/actuator/feedback, which computes the
+// simulated fault via logic/actuator_feedback.py and forwards it here --
+// this endpoint only applies the result, it does not simulate anything
+// itself (that stays host-side, already proven by 20+ tests).
+//
+// Body: {"actuator": "fan"|"pump"|"window", "fault_code": "<code>"|null}
+// fault_code present (non-null) -> controllerFaultActive = true.
+// fault_code null -> explicitly clears it (the blueprint's "Clear fault"
+// recovery step). "actuator" is accepted but not yet used to distinguish
+// which actuator faulted -- the safety supervisor's controller_fault
+// input is a single system-wide flag, not per-actuator, matching
+// logic/safety.py's existing signature. Recorded as a known limitation,
+// not silently assumed away.
+void handleFeedbackPost() {
+  unsigned long nowMs = millis();
+
+  if (!server.hasArg("plain")) {
+    rejectFeedback(400, "missing body", nowMs, "Missing feedback request body");
+    return;
+  }
+  const String& body = server.arg("plain");
+  if (body.length() > kMaxRequestBodyBytes) {
+    rejectFeedback(413, "request body too large", nowMs, "Feedback request body exceeded size limit");
+    return;
+  }
+
+  JsonDocument doc;
+  DeserializationError parseError = deserializeJson(doc, body);
+  if (parseError) {
+    rejectFeedback(400, "invalid JSON", nowMs, String("Feedback JSON parse error: ") + parseError.c_str());
+    return;
+  }
+
+  if (!doc["actuator"].is<const char*>()) {
+    rejectFeedback(400, "missing or invalid actuator", nowMs, "Missing or invalid feedback actuator field");
+    return;
+  }
+  const char* actuator = doc["actuator"];
+
+  bool faultPresent = doc["fault_code"].is<const char*>();
+  controllerFaultActive = faultPresent;
+
+  if (faultPresent) {
+    const char* faultCode = doc["fault_code"];
+    shared.events.push(nowMs, "FEEDBACK_FAULT", String(actuator) + ": " + faultCode);
+  } else {
+    shared.events.push(nowMs, "FEEDBACK_FAULT_CLEARED", actuator);
+  }
+
+  JsonDocument response;
+  response["accepted"] = true;
+  response["controller_fault_active"] = controllerFaultActive;
+  String responseBody;
+  serializeJson(response, responseBody);
+  server.send(200, "application/json", responseBody);
+}
+
 void handleNotFound() { sendJsonError(404, "not found"); }
 
 }  // namespace
@@ -375,6 +462,7 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   server.on("/sensor", HTTP_POST, handleSensorPost);
+  server.on("/feedback", HTTP_POST, handleFeedbackPost);
   server.onNotFound(handleNotFound);
   server.begin();
 }

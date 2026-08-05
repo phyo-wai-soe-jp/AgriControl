@@ -30,6 +30,13 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from logic.actuator_feedback import (
+    FaultMode,
+    detect_mismatch,
+    simulate_binary_actuator,
+    simulate_servo_actuator,
+)
+
 # Roadmap task 42: forward temperature to the ESP. Configurable, not
 # hardcoded -- the real ESP's IP address is an open owner question (see
 # docs/PROJECT_STATE.md), not something to guess.
@@ -94,6 +101,22 @@ class SensorRequest(BaseModel):
     rain: Optional[float] = Field(None, description="Virtual rain flag: 0 (no rain) or 1 (raining).")
 
 
+class ActuatorFeedbackRequest(BaseModel):
+    """Roadmap task 66 / blueprint page-1 diagram's "F. Actuator Simulator".
+
+    The website picks an actuator and an injectable fault; this bridge
+    computes the simulated feedback (via logic/actuator_feedback.py, not
+    reimplemented here) and forwards it to the ESP's POST /feedback so its
+    safety supervisor can react through controller_fault -- closing the
+    loop, not just proving the fault math on the host.
+    """
+
+    actuator: str = Field(..., description="'fan', 'pump', or 'window'.")
+    fault_mode: str = Field("none", description="none, failed_startup, stuck_on, stuck_off, or wrong_position.")
+    commanded_state: Optional[bool] = Field(None, description="Commanded on/off, required for fan/pump.")
+    commanded_window_deg: Optional[int] = Field(None, description="Commanded angle in degrees, required for window.")
+
+
 app = FastAPI(title="AgriControl FastAPI Bridge", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -154,6 +177,66 @@ def forward_temperature(request: SensorRequest) -> dict:
     body = response.json()
     events.push("ACCEPTED", f"sequence={sequence} response={body}")
     return body
+
+
+@app.post("/api/actuator/feedback")
+def simulate_actuator_feedback(request: ActuatorFeedbackRequest) -> dict:
+    """Roadmap task 66: simulate an actuator fault and forward it to the ESP.
+
+    Computes the simulated feedback host-side using logic/actuator_feedback.py
+    (already covered by tests/test_actuator_feedback.py), then POSTs the
+    resulting fault_code to the ESP's /feedback endpoint, mirroring
+    forward_temperature's ESP-error handling (RequestError -> 502,
+    status>=400 -> 502).
+    """
+    try:
+        fault_mode = FaultMode(request.fault_mode)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Unknown fault_mode: {request.fault_mode}") from exc
+
+    if request.actuator == "window":
+        if request.commanded_window_deg is None:
+            raise HTTPException(status_code=400, detail="commanded_window_deg is required for actuator=window")
+        servo_feedback = simulate_servo_actuator(request.commanded_window_deg, fault_mode=fault_mode)
+        measured_state = servo_feedback.measured_deg
+        fault_code = detect_mismatch(request.commanded_window_deg, measured_state, servo_feedback.fault_code)
+    elif request.actuator in ("fan", "pump"):
+        if request.commanded_state is None:
+            raise HTTPException(status_code=400, detail=f"commanded_state is required for actuator={request.actuator}")
+        # elapsed_since_command_ms is fixed well past any startup-delay window:
+        # this endpoint simulates steady-state fault behavior for the website,
+        # not the transient startup-delay case (see logic/actuator_feedback.py).
+        binary_feedback = simulate_binary_actuator(
+            request.commanded_state, elapsed_since_command_ms=99999, fault_mode=fault_mode
+        )
+        measured_state = binary_feedback.measured_state
+        fault_code = detect_mismatch(request.commanded_state, measured_state, binary_feedback.fault_code)
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown actuator: {request.actuator}")
+
+    events.push(
+        "ACTUATOR_FEEDBACK_SIMULATED",
+        f"actuator={request.actuator} fault_mode={request.fault_mode} measured={measured_state} fault_code={fault_code}",
+    )
+
+    esp_payload = {"actuator": request.actuator, "fault_code": fault_code}
+    try:
+        response = httpx.post(f"{ESP_BASE_URL}/feedback", json=esp_payload, timeout=ESP_REQUEST_TIMEOUT_SECONDS)
+    except httpx.RequestError as exc:
+        events.push("ESP_UNREACHABLE", f"feedback actuator={request.actuator} error={exc}")
+        raise HTTPException(status_code=502, detail=f"Could not reach ESP at {ESP_BASE_URL}: {exc}") from exc
+
+    if response.status_code >= 400:
+        events.push(
+            "ESP_REJECTED", f"feedback actuator={request.actuator} status={response.status_code} body={response.text}"
+        )
+        raise HTTPException(
+            status_code=502, detail=f"ESP rejected the feedback: {response.status_code} {response.text}"
+        )
+
+    esp_body = response.json()
+    events.push("ACCEPTED", f"feedback actuator={request.actuator} esp_response={esp_body}")
+    return {"measured_state": measured_state, "fault_code": fault_code, "esp_response": esp_body}
 
 
 @app.get("/api/events")

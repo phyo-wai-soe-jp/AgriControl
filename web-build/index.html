@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-05T16:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-05T20:30:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1982,12 +1982,12 @@
         "58": "done",
         "59": "done",
         "60": "done",
-        "61": "active",
-        "62": "active",
-        "63": "active",
-        "64": "active",
-        "65": "active",
-        "66": "active",
+        "61": "done",
+        "62": "done",
+        "63": "done",
+        "64": "done",
+        "65": "done",
+        "66": "done",
         "67": "done",
         "68": "done",
         "69": "done",
@@ -1995,7 +1995,7 @@
       },
       branches: {
         "1": "verified",
-        "2": "drafted",
+        "2": "implemented",
         "3": "implemented",
         "4": "implemented",
         "5": "implemented",
@@ -2029,7 +2029,7 @@
         "C-3": "done",
         "C-4": "done"
       },
-      notes: "Major firmware milestone 2026-08-05: real board access confirmed (a wrong assumption corrected, not a new capability); all 10 firmware environments now compile (a project-wide build bug found and fixed); env:irrigation_slice flashed and extensively tested live, closing 20 roadmap tasks and Gates A/B/C with real hardware evidence, including a genuine safety-supervisor recovery bug found and fixed. Self-correction the same day: rereading the blueprint against simulator/index.html found that Stage 9's 'closed-loop simulation' tasks (61-66) and branch 2 (Website simulation) had been marked done/implemented based on host-level Python logic (logic/actuator_feedback.py) alone -- the blueprint's own text (task 65's 'incorrect VIRTUAL servo position', the page-1 diagram's dedicated Actuator Simulator component) describes a website feature that simulates actuator faults and feeds them back to the real ESP through the bridge, which was never built. Corrected tasks 61-66 back to active and branch 2 back to drafted; the underlying logic remains genuinely tested, just not yet wired into an actual closed loop. Gate C (Test platform) was left alone -- its criteria are about test infrastructure generally, which the host-level work does satisfy. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
+      notes: "Stage 9 done for real, 2026-08-05: after the same-day self-correction (tasks 61-66 and branch 2 downgraded for being based on host-level logic alone), built the actual missing closed loop -- firmware/src/irrigation_slice.cpp gained a real POST /feedback endpoint (a mutable controllerFaultActive flag, previously a compile-time constexpr false); backend/app.py gained POST /api/actuator/feedback, which calls the already-proven logic/actuator_feedback.py simulators and forwards the result to the ESP; simulator/index.html gained an actuator-fault-simulator panel (pick actuator + fault mode, send, see the ESP's response). Verified against the real physical board, not just host tests: injecting a pump stuck_off fault via the bridge produced mode=safety_override, alarm_level=critical, triggered_rules=[CONTROLLER-FAULT] on the real ESP, forcing fan/pump/window to their safe state; clearing the fault correctly required 5 consecutive stable valid messages (the recovery-gating fix from earlier this session) before returning to automatic. Tasks 61-66 back to done and branch 2 back to implemented -- this time backed by a genuine website-to-ESP round trip, not just logic/actuator_feedback.py's host tests. Gate C (Test platform) and Stage 8 were correctly left untouched by the original correction -- still valid. Still open: sensor-behavior-fault simulation (noise/drift/disconnect) and a scenario engine, described in Branch 2's text but never assigned numbered roadmap tasks. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

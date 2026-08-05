@@ -71,6 +71,105 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (Stage 9 done for real: the missing website-to-ESP actuator-fault closed loop, built and verified on real hardware)
+
+Agent: agent-06-frontend-sim, agent-05-backend (Claude Sonnet 5).
+
+Direct follow-through on the previous entry's own "Next task": build the
+actual missing piece the self-correction identified, not just re-mark it
+done. Built the closed loop the blueprint's page-1 diagram depicts ("F.
+Actuator Simulator" -> "feedback/faults" -> "C. ESP32-C3 Controller"),
+layer by layer, and verified each layer with real evidence before
+touching roadmap status.
+
+**Firmware** (`firmware/src/irrigation_slice.cpp`): the safety
+supervisor's `controller_fault` input was a `constexpr bool` fixed to
+`false` at compile time -- nothing could ever set it, regardless of what
+`logic/actuator_feedback.py`'s host tests proved. Changed it to a real
+mutable `controllerFaultActive` flag, added a `POST /feedback` endpoint
+(`handleFeedbackPost()`, parses `{"actuator", "fault_code"}`, sticky until
+a later call explicitly reports `fault_code: null`, matching the
+blueprint's own "Clear fault -> Resume automatic operation" recovery
+chain), and a separate `rejectFeedback()` error helper (deliberately not
+reusing `rejectAndLog()`, which also touches sensor-message recovery
+state that this endpoint has nothing to do with). Compiled clean:
+`pio run -e irrigation_slice` -> SUCCESS, RAM 12.8%, Flash 64.1%.
+
+**Backend** (`backend/app.py`): added `POST /api/actuator/feedback`. It
+does not reimplement fault math -- it imports and calls the existing,
+already-tested `logic/actuator_feedback.py` functions
+(`simulate_binary_actuator`, `simulate_servo_actuator`,
+`detect_mismatch`), then forwards the resulting `fault_code` to the ESP's
+new `/feedback` endpoint via `httpx.post`, mirroring
+`forward_temperature`'s error handling (`RequestError` -> 502,
+`status>=400` -> 502, event log entries for each outcome). Covered by 10
+new pytest tests in `backend/tests/test_app.py` (`TestActuatorFeedback`)
+covering all three actuator kinds, all fault modes, validation errors,
+and ESP-unreachable/ESP-rejected paths -- `python3 -m pytest
+backend/tests/test_app.py` -> 27 passed (up from 17).
+
+**Website** (`simulator/index.html`): added an "Actuator fault simulator"
+panel -- pick an actuator (fan/pump/window), pick a fault mode (the
+dropdown only offers modes that actually apply to the chosen actuator,
+matching `logic/actuator_feedback.py`'s simulators exactly), set the
+commanded state/angle, and send. Displays the measured state, fault code,
+and the ESP's own `controller_fault_active` response. Verified: JS
+extracted and checked with `node --check` (valid syntax), every
+`getElementById` reference cross-checked against the HTML's `id`
+attributes (no missing IDs) -- full jsdom rendering wasn't reinstalled
+for this specific file, but the dashboard's own `web-build/index.html`
+was jsdom-rendered live (see metrics update below).
+
+**Real-hardware verification** (the evidence that actually justifies
+marking this `done`, not host-level tests alone): flashed the updated
+`irrigation_slice` firmware to the physical ESP32-C3M-TRY board, found it
+on the LAN at `192.168.0.11` (matched via its USB-JTAG MAC address
+`1c:db:d4:f6:a8:54` appearing in the Mac's ARP table), then:
+
+- Direct `curl` to `/feedback` confirmed both fault-set and fault-clear
+  responses (`controller_fault_active: true/false`).
+- Injecting `ACTUATOR-STUCK-OFF` via `/feedback`, then sending a normal
+  `/sensor` reading, produced `mode: safety_override`, `alarm_level:
+  critical`, `triggered_rules: ["...", "CONTROLLER-FAULT"]`, with
+  fan/pump forced off and window forced to 10 degrees -- the real safety
+  supervisor genuinely reacting to the simulated fault.
+- Clearing the fault did not resume `automatic` immediately: it correctly
+  required 5 consecutive stable valid `/sensor` messages first
+  (`DATA-STALE` on sequences 3-6, `automatic` on sequence 7) -- the exact
+  recovery-gating behavior fixed earlier this session, now cross-verified
+  again through this new code path.
+- Repeated the same fault-inject-and-clear sequence through the actual
+  running FastAPI bridge (`backend/app.py`, pointed at the real board via
+  `AGRICONTROL_ESP_BASE_URL=http://192.168.0.11`) hitting
+  `POST /api/actuator/feedback` directly -- confirmed the bridge's
+  computed `fault_code` matched what the ESP received and reacted to, and
+  that the bridge's event log recorded both `ACTUATOR_FEEDBACK_SIMULATED`
+  and `ACCEPTED` entries correctly.
+
+**Roadmap status restored, this time with real evidence**:
+
+- Tasks 61-66: `active` -> `done`.
+- Branch 2 (Website simulation): `drafted` -> `implemented`.
+- `data/progress-baseline.json` (and its `web-build/` mirror) metrics:
+  overall 69% -> 72%, roadmap 80% -> 84% (63/82 -> 69/82 tasks done),
+  branches 61% -> 63%, control loop 65% -> 70% (8/12 steps covered, up
+  from 7). Gate percentages unchanged (18/26 -- Gate C was correctly left
+  alone by the original correction and remains so). `updated_at` bumped
+  to `2026-08-05T20:30:00+09:00`; `web-build/index.html`'s
+  `BASELINE_VERSION` bumped to match. `next_tasks` updated to `[22, 70,
+  72, 73]` (61-66 removed, now genuinely done).
+- Recomputed the dashboard's weighted-average metrics by hand and
+  cross-verified against a live jsdom rendering of
+  `web-build/index.html`'s `summaryReport` output before committing --
+  both agree exactly (72%/84%/63%/69%/70%).
+
+Still open, explicitly not claimed here: sensor-behavior-fault simulation
+(noise, drift, frozen value, disconnected sensor, impossible value,
+delayed transmission) and a scenario engine -- both described in Branch
+2's purpose text but never assigned their own numbered roadmap tasks.
+Worth picking up next if the owner wants Branch 2 fully "verified" rather
+than "implemented."
+
 Date: 2026-08-05 JST (self-correction: Stage 9 and branch 2 downgraded -- a real overclaim found by rereading the blueprint)
 
 Agent: agent-01-coordinator, agent-06-frontend-sim (Claude Sonnet 5).

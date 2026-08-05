@@ -262,6 +262,137 @@ class TestSessionReset:
         assert captured["sequence"] == 1  # sequence restarted
 
 
+class TestActuatorFeedback:
+    """Roadmap task 66 / blueprint page-1 diagram's "F. Actuator Simulator":
+    the website picks an actuator + fault, this bridge computes the
+    simulated feedback via logic/actuator_feedback.py and forwards it to
+    the ESP's POST /feedback. These tests exercise the real simulation
+    functions (not mocked) and only fake the ESP's HTTP response."""
+
+    def test_fan_no_fault_matches_commanded_state(self, client, monkeypatch):
+        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": False}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "fan", "fault_mode": "none", "commanded_state": True},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["measured_state"] is True
+        assert body["fault_code"] is None
+
+    def test_pump_stuck_off_produces_fault_when_commanded_on(self, client, monkeypatch):
+        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": True}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "pump", "fault_mode": "stuck_off", "commanded_state": True},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["measured_state"] is False
+        assert body["fault_code"] == "ACTUATOR-STUCK-OFF"
+
+    def test_window_wrong_position_produces_fault_and_offset_angle(self, client, monkeypatch):
+        install_fake_esp(monkeypatch, lambda url, payload: (200, {"accepted": True, "controller_fault_active": True}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "window", "fault_mode": "wrong_position", "commanded_window_deg": 90},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["measured_state"] == 105
+        assert body["fault_code"] == "ACTUATOR-WRONG-POSITION"
+
+    def test_forwards_actuator_and_fault_code_to_esp_feedback_endpoint(self, client, monkeypatch):
+        captured = {}
+
+        def responder(url, payload):
+            captured["url"] = url
+            captured["payload"] = payload
+            return 200, {"accepted": True, "controller_fault_active": True}
+
+        install_fake_esp(monkeypatch, responder)
+
+        client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "fan", "fault_mode": "failed_startup", "commanded_state": True},
+        )
+        assert captured["url"] == f"{app_module.ESP_BASE_URL}/feedback"
+        assert captured["payload"] == {"actuator": "fan", "fault_code": "ACTUATOR-FAILED-STARTUP"}
+
+    def test_unknown_fault_mode_is_rejected_before_forwarding(self, client, monkeypatch):
+        calls = []
+        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "fan", "fault_mode": "not_a_real_fault", "commanded_state": True},
+        )
+        assert response.status_code == 400
+        assert calls == []
+
+    def test_unknown_actuator_is_rejected_before_forwarding(self, client, monkeypatch):
+        calls = []
+        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "heater", "fault_mode": "none", "commanded_state": True},
+        )
+        assert response.status_code == 400
+        assert calls == []
+
+    def test_missing_commanded_state_for_fan_is_rejected_before_forwarding(self, client, monkeypatch):
+        calls = []
+        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+
+        response = client.post("/api/actuator/feedback", json={"actuator": "fan", "fault_mode": "none"})
+        assert response.status_code == 400
+        assert calls == []
+
+    def test_missing_commanded_window_deg_is_rejected_before_forwarding(self, client, monkeypatch):
+        calls = []
+        install_fake_esp(monkeypatch, lambda url, payload: calls.append(payload) or (200, {}))
+
+        response = client.post("/api/actuator/feedback", json={"actuator": "window", "fault_mode": "none"})
+        assert response.status_code == 400
+        assert calls == []
+
+    def test_esp_unreachable_returns_502_and_logs_event(self, client, monkeypatch):
+        def fake_post(url, json=None, timeout=None):
+            raise httpx.ConnectError("connection refused", request=httpx.Request("POST", url))
+
+        monkeypatch.setattr(app_module.httpx, "post", fake_post)
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "fan", "fault_mode": "none", "commanded_state": True},
+        )
+        assert response.status_code == 502
+        assert "Could not reach ESP" in response.json()["detail"]
+
+        events = client.get("/api/events").json()
+        codes = [e["code"] for e in events]
+        assert "ESP_UNREACHABLE" in codes
+        assert "ACTUATOR_FEEDBACK_SIMULATED" in codes
+
+    def test_esp_rejection_returns_502_and_logs_event(self, client, monkeypatch):
+        install_fake_esp(monkeypatch, lambda url, payload: (400, {"accepted": False, "error": "unknown actuator"}))
+
+        response = client.post(
+            "/api/actuator/feedback",
+            json={"actuator": "fan", "fault_mode": "none", "commanded_state": True},
+        )
+        assert response.status_code == 502
+        assert "ESP rejected the feedback" in response.json()["detail"]
+
+        events = client.get("/api/events").json()
+        codes = [e["code"] for e in events]
+        assert "ESP_REJECTED" in codes
+
+
 class TestEventLogUnit:
     """Direct unit tests of EventLog's ring-buffer behavior (roadmap task
     47), independent of the HTTP layer."""
