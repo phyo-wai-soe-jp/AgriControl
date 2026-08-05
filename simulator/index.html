@@ -492,6 +492,32 @@
         };
       }
 
+      // Guards against request pileup: each network round trip (bridge ->
+      // MQTT -> ESP -> MQTT -> bridge) takes real time, so firing a fresh
+      // one per "input" event while fast-dragging a slider queued up far
+      // faster than they could resolve, and the page spent many seconds
+      // "catching up" after the user had already stopped. requestSend()
+      // only ever keeps one request in flight; extra calls while one is
+      // pending just mark that another is needed once it finishes, which
+      // then reads whatever the sliders currently show -- not a stale
+      // snapshot from when it was queued.
+      let sendInFlight = false;
+      let sendQueued = false;
+
+      async function requestSend() {
+        if (sendInFlight) {
+          sendQueued = true;
+          return;
+        }
+        sendInFlight = true;
+        await sendTemperature();
+        sendInFlight = false;
+        if (sendQueued) {
+          sendQueued = false;
+          requestSend();
+        }
+      }
+
       async function sendTemperature() {
         try {
           const res = await fetch(bridgeUrl() + "/api/temperature", {
@@ -589,22 +615,22 @@
       elements.temperatureSlider.addEventListener("input", () => {
         elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
         if (elements.liveUpdateCheckbox.checked) {
-          sendTemperature();
+          requestSend();
         }
       });
       elements.soilMoistureSlider.addEventListener("input", () => {
         elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
         if (elements.liveUpdateCheckbox.checked) {
-          sendTemperature();
+          requestSend();
         }
       });
       elements.tankLevelSlider.addEventListener("input", () => {
         elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
         if (elements.liveUpdateCheckbox.checked) {
-          sendTemperature();
+          requestSend();
         }
       });
-      elements.sendBtn.addEventListener("click", sendTemperature);
+      elements.sendBtn.addEventListener("click", requestSend);
       elements.refreshEventsBtn.addEventListener("click", refreshEvents);
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
@@ -625,7 +651,7 @@
       // under the 10s timeout) makes this page behave like the
       // continuously-connected sensor the blueprint describes, without
       // changing any tested firmware/safety behavior.
-      setInterval(sendTemperature, 4000);
+      setInterval(requestSend, 4000);
     })();
   </script>
 </body>
