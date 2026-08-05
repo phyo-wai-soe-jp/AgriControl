@@ -218,12 +218,22 @@
 
   .window-scene {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    gap: 22px;
     padding: 10px 0 18px;
+    flex-wrap: wrap;
   }
+  .actuator-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .actuator-caption { font-size: 0.82rem; color: var(--ink); }
+
   .window-frame {
-    width: 112px;
+    width: 78px;
     height: 78px;
     border: 4px solid var(--ink);
     border-radius: 4px;
@@ -247,18 +257,10 @@
     transition: transform 0.4s ease;
     backdrop-filter: blur(1px);
   }
-  .actuator-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 0;
-    font-size: 0.88rem;
-  }
-  .actuator-row + .actuator-row { border-top: 1px solid var(--line); }
 
   .fan-icon, .pump-icon {
-    width: 20px;
-    height: 20px;
+    width: 78px;
+    height: 78px;
     flex: none;
     fill: var(--line);
     transform-origin: center;
@@ -329,24 +331,27 @@
         </h2>
         <span class="badge idle" id="responseBadge">No response yet</span>
         <div class="window-scene">
-          <div class="window-frame">
-            <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
+          <div class="actuator-visual">
+            <div class="window-frame">
+              <div class="window-sash" id="windowSash" style="transform: rotateY(0deg);"></div>
+            </div>
+            <span class="actuator-caption">Window</span>
           </div>
-        </div>
-        <div class="actuator-row">
-          <svg class="fan-icon off" id="fanIndicator" viewBox="0 0 24 24" aria-hidden="true">
-            <ellipse cx="12" cy="7" rx="2.2" ry="4.5"/>
-            <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(120 12 12)"/>
-            <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(240 12 12)"/>
-            <circle cx="12" cy="12" r="1.6" class="fan-hub"/>
-          </svg>
-          <span id="fanLabel">Fan: off</span>
-        </div>
-        <div class="actuator-row">
-          <svg class="pump-icon off" id="pumpIndicator" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/>
-          </svg>
-          <span id="pumpLabel">Pump: off</span>
+          <div class="actuator-visual">
+            <svg class="fan-icon off" id="fanIndicator" viewBox="0 0 24 24" aria-hidden="true">
+              <ellipse cx="12" cy="7" rx="2.2" ry="4.5"/>
+              <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(120 12 12)"/>
+              <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(240 12 12)"/>
+              <circle cx="12" cy="12" r="1.6" class="fan-hub"/>
+            </svg>
+            <span class="actuator-caption" id="fanLabel">Fan: off</span>
+          </div>
+          <div class="actuator-visual">
+            <svg class="pump-icon off" id="pumpIndicator" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/>
+            </svg>
+            <span class="actuator-caption" id="pumpLabel">Pump: off</span>
+          </div>
         </div>
         <dl class="response-grid" id="responseGrid"></dl>
         <div class="reasons" id="responseReasons"></div>
