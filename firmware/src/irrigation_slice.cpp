@@ -293,7 +293,16 @@ void handleSensorPost() {
   FullDecision decision =
       evaluateFullDecision(temperatureC, hasMoisture, moisturePercent, hasRain, rainValue, previousPumpRequested);
 
-  bool dataStale = shared.system.communicationState() == CommunicationState::DATA_STALE;
+  // Gate A criterion "Recovery requires stable valid messages": the raw
+  // communicationState() flips back to DATA_ACTIVE as soon as a single
+  // fresh reading arrives, which resumed automatic operation after just
+  // one valid message and never actually consulted
+  // shared.recovery.stableCommunicationConfirmed() -- found by testing
+  // real recovery behavior on hardware, not by reviewing this file.
+  // SystemState::mode() is the field SharedState::tick() actually gates
+  // on RECOVERY/AUTOMATIC through that confirmation, so it -- not the
+  // instantaneous communication state -- is the correct signal here.
+  bool dataStale = shared.system.mode() == Mode::WARNING || shared.system.mode() == Mode::RECOVERY;
   FullSafetyResult safety = evaluateFullSafety(
       decision, hasTank, tankPercent, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup,
       kConfiguredSafeFanState);

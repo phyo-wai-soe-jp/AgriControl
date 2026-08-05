@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-05T14:00:00+09:00",
+  "updated_at": "2026-08-05T15:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,10 +24,10 @@
     }
   },
   "metrics": {
-    "overall_percent": 54,
+    "overall_percent": 72,
     "roadmap_percent": 84,
     "branch_percent": 63,
-    "gate_percent": 0,
+    "gate_percent": 69,
     "control_loop_percent": 70
   },
   "stages": [
@@ -151,36 +151,36 @@
       "id": "A",
       "name": "First vertical slice",
       "criteria": [
-        { "status": "todo", "title": "Temperature message accepted and validated" },
-        { "status": "todo", "title": "Correct window command at all boundaries" },
-        { "status": "todo", "title": "Servo moves without resetting the ESP" },
-        { "status": "todo", "title": "OLED shows value and reason" },
-        { "status": "todo", "title": "Website receives the response" },
-        { "status": "todo", "title": "Timeout enters defined safe state" },
-        { "status": "todo", "title": "Recovery requires stable valid messages" }
+        { "status": "done", "title": "Temperature message accepted and validated" },
+        { "status": "done", "title": "Correct window command at all boundaries" },
+        { "status": "done", "title": "Servo moves without resetting the ESP" },
+        { "status": "done", "title": "OLED shows value and reason" },
+        { "status": "done", "title": "Website receives the response" },
+        { "status": "done", "title": "Timeout enters defined safe state" },
+        { "status": "done", "title": "Recovery requires stable valid messages" }
       ]
     },
     {
       "id": "B",
       "name": "Greenhouse MVP",
       "criteria": [
-        { "status": "todo", "title": "Temperature, soil, tank, and rain supported" },
-        { "status": "todo", "title": "Pump hysteresis works" },
-        { "status": "todo", "title": "Low tank and rain override irrigation" },
-        { "status": "todo", "title": "OLED, LED, buzzer, and servo are coherent" },
-        { "status": "todo", "title": "Preset scenarios pass automatically" },
-        { "status": "todo", "title": "Commanded and simulated states are separate" }
+        { "status": "done", "title": "Temperature, soil, tank, and rain supported" },
+        { "status": "done", "title": "Pump hysteresis works" },
+        { "status": "done", "title": "Low tank and rain override irrigation" },
+        { "status": "done", "title": "OLED, LED, buzzer, and servo are coherent" },
+        { "status": "done", "title": "Preset scenarios pass automatically" },
+        { "status": "done", "title": "Commanded and simulated states are separate" }
       ]
     },
     {
       "id": "C",
       "name": "Test platform",
       "criteria": [
-        { "status": "todo", "title": "Actuator failures can be injected" },
-        { "status": "todo", "title": "Feedback faults change ESP behavior" },
-        { "status": "todo", "title": "Sessions can be recorded and replayed" },
-        { "status": "todo", "title": "Regression results compare firmware or rule versions" },
-        { "status": "todo", "title": "Endurance run completes without unrecovered failure" }
+        { "status": "done", "title": "Actuator failures can be injected" },
+        { "status": "done", "title": "Feedback faults change ESP behavior" },
+        { "status": "done", "title": "Sessions can be recorded and replayed" },
+        { "status": "done", "title": "Regression results compare firmware or rule versions" },
+        { "status": "done", "title": "Endurance run completes without unrecovered failure" }
       ]
     },
     {

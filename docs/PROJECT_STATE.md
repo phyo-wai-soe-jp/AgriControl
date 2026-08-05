@@ -71,6 +71,118 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (real safety-supervisor bug found and fixed; Gates A, B, C closed -- first gate progress ever recorded)
+
+Agent: agent-04-firmware-runtime, agent-01-coordinator (Claude Sonnet 5).
+
+While reviewing Gate A's ("First vertical slice") seven criteria against
+today's accumulated evidence -- an audit prompted by noticing
+`gate_percent` had sat at 0% for the entire project's history -- found a
+genuine, previously-undetected bug in the safety supervisor's wiring, and
+a second, unrelated bug in the dashboard itself that would have silently
+discarded any gate-tracking work regardless.
+
+**Bug 1 -- recovery never actually required stable communication.**
+`irrigation_slice.cpp` and `vertical_slice.cpp` computed their `dataStale`
+safety-supervisor input as `shared.system.communicationState() ==
+CommunicationState::DATA_STALE` -- the *raw*, instantaneous communication
+state, which `SharedState::tick()` flips back to `DATA_ACTIVE` as soon as
+a single fresh reading arrives. The blueprint's own documented recovery
+chain ("Failure -> Safe state -> Several consecutive valid messages ->
+Stable communication confirmed -> Resume automatic operation") is
+implemented correctly by `RecoveryTracker`/`SystemState::mode()`
+(`WARNING` -> `RECOVERY` -> `AUTOMATIC`, gated on 5 consecutive valid
+messages) -- but that mode field was never actually consulted by the
+safety decision. The result: real automatic operation (and its commanded
+actuator values) resumed after just one valid message, not five. Every
+piece in isolation was correct and separately tested (`RecoveryTracker`'s
+host tests, `evaluate_safety`'s `data_stale` handling) -- the bug was
+purely in how they were wired together in the firmware caller, which
+none of the host tests could see since they don't exercise `SharedState`
+end-to-end the way live hardware does.
+
+**Fix**: changed `dataStale` in `irrigation_slice.cpp`,
+`vertical_slice.cpp`, and `mqtt_test_harness.cpp` (same bug, ported there
+too) to `shared.system.mode() == Mode::WARNING || shared.system.mode() ==
+Mode::RECOVERY` -- reusing the exact state machine `SharedState::tick()`
+already maintains correctly, rather than adding new tracking.
+
+**Verified live**: forced a real stale gap (>10s) on the physical board,
+then sent rapid consecutive readings. With genuinely back-to-back
+requests, the fix behaved exactly as designed: 5 consecutive messages in
+`safety_override`, then automatic resumes on the 6th -- matching
+`kRecoveryConsecutiveValidRequired = 5` precisely. (Earlier attempts with
+natural gaps between manual `curl` calls repeatedly re-triggered
+staleness mid-cycle, which is *correct* behavior, not a flaw -- any new
+staleness during recovery should reset the streak.)
+
+**Bug 2 -- the dashboard itself silently discarded gate data.**
+`web-build/index.html` had a leftover initialization loop
+(`for (const gate of gates) { gate.criteria.forEach((_, index) => {
+baseline.gates[...] = "todo"; }); }`) that ran *after* the `baseline`
+object literal, unconditionally overwriting every gate criterion back to
+`"todo"` -- dead code from when `baseline.gates` was empty and this loop
+was the only way criteria got default values. The moment `baseline.gates`
+was populated with real values (this session), this loop silently erased
+them on every page load. Removed now that every applicable criterion is
+listed explicitly in the object literal; criteria not listed still
+correctly default to `"todo"` via `statusForGate()`'s existing fallback.
+
+**Closed three completion gates in full**, the first ever recorded in
+this project (`gate_percent` had been 0% since the baseline was created):
+
+- **Gate A (First vertical slice)**: all 7 criteria, including two not
+  previously verified this session -- "Website receives the response"
+  (confirmed by running the real FastAPI bridge with
+  `AGRICONTROL_ESP_BASE_URL` pointed at the physical board's IP and
+  relaying a real response, not a mocked one) and the now-fixed recovery
+  criterion.
+- **Gate B (Greenhouse MVP)**: all 6 criteria -- confirmed rain
+  protection on real hardware for the first time this session (dry soil +
+  rain=1 correctly held the previous pump state rather than turning it
+  on), alongside soil/tank/temperature support, low-tank override, OLED/
+  LED/buzzer/servo coherence, Stage 8's automated scenarios, and Stage
+  9's commanded/simulated state separation (all already proven in earlier
+  sessions).
+- **Gate C (Test platform)**: all 5 criteria -- Stage 9's fault injection,
+  Stage 10's recording/replay, and both the bridge-side and board-side
+  endurance runs.
+
+Gates D (Physical migration) and E (Platform expansion) remain untouched
+at 0% -- they require real sensor/actuator hardware and deliberate
+architecture decisions this session didn't have grounds to make.
+
+Evidence:
+
+- `pio run` (all 10 environments): SUCCESS after the fix.
+- Live recovery-cycle test against the physical board: 5-message
+  safety-override streak confirmed, matching the constant exactly.
+- Live rain-protection test: dry soil + rain=1 held the previous `pump:
+  true` state from an earlier test rather than triggering a new pump-on.
+- Live bridge-to-real-ESP test: `uvicorn` run locally with
+  `AGRICONTROL_ESP_BASE_URL=http://192.168.0.11`, 5 real round trips
+  relayed and logged correctly in the bridge's own event log.
+- `python3 -m unittest discover -s tests` -> 88 passed, unaffected (the
+  fix only touched firmware callers, not `logic/`).
+
+Status updates:
+
+- No roadmap task status changed from the bug fix itself (it corrects
+  behavior for gate criteria, not a numbered task).
+- Gates A, B, and C fully closed (18/26 criteria done).
+- `data/progress-baseline.json` metrics: overall 54% -> 72% (`gate_percent`
+  0% -> 69%, the single largest jump of any change this project has ever
+  recorded, entirely because gate tracking had never been touched before).
+  `updated_at` bumped to `2026-08-05T15:00:00+09:00`;
+  `web-build/index.html`'s `BASELINE_VERSION` bumped to match, and its
+  gate-clobbering dead code removed.
+
+Next task: Gates D and E, and roadmap tasks 22/70/72-82, all need either
+real physical hardware (sensors, a pump driver) this environment doesn't
+have, or deliberate scope decisions (MQTT, multi-device, auth, packaging)
+the project's own docs say to defer. This is close to a genuine stopping
+point for further autonomous progress without the owner's involvement.
+
 Date: 2026-08-05 JST (ten more roadmap tasks closed: Stage 4/5's shared infrastructure, proven via irrigation_slice.cpp)
 
 Agent: agent-04-firmware-runtime (Claude Sonnet 5).

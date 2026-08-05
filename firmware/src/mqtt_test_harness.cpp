@@ -288,7 +288,11 @@ void handleSensorMessage(const String& body) {
   FullDecision decision =
       evaluateFullDecision(temperatureC, hasMoisture, moisturePercent, hasRain, rainValue, previousPumpRequested);
 
-  bool dataStale = shared.system.communicationState() == CommunicationState::DATA_STALE;
+  // Gate A criterion "Recovery requires stable valid messages": same fix
+  // as irrigation_slice.cpp -- the raw communicationState() flips back to
+  // DATA_ACTIVE after a single fresh reading, never actually consulting
+  // shared.recovery.stableCommunicationConfirmed().
+  bool dataStale = shared.system.mode() == Mode::WARNING || shared.system.mode() == Mode::RECOVERY;
   FullSafetyResult safety = evaluateFullSafety(
       decision, hasTank, tankPercent, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup,
       kConfiguredSafeFanState);

@@ -179,7 +179,12 @@ void handleSensorPost() {
 
   TemperatureDecision decision = evaluateTemperatureDecision(temperatureC);
 
-  bool dataStale = shared.system.communicationState() == CommunicationState::DATA_STALE;
+  // Gate A criterion "Recovery requires stable valid messages": see the
+  // identical fix and comment in irrigation_slice.cpp, ported here since
+  // this file shares the exact same bug. The raw communicationState()
+  // flips back to DATA_ACTIVE after a single fresh reading, never
+  // actually consulting shared.recovery.stableCommunicationConfirmed().
+  bool dataStale = shared.system.mode() == Mode::WARNING || shared.system.mode() == Mode::RECOVERY;
   SafetyResult safety = evaluateSafety(
       decision, kEmergencyStopActive, kControllerFaultActive, dataStale, isStartup, kConfiguredSafeFanState);
 

@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-05T14:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-05T15:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -2009,17 +2009,30 @@
         "13": "implemented",
         "14": "implemented"
       },
-      gates: {},
-      notes: "Major firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability). All 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, found and fixed). env:irrigation_slice was flashed and extensively tested directly via curl against its own local HTTP server, and with the owner watching/listening: startup safe-state, all three window angles (10/90/170), DATA-STALE and LOW-TANK safety overrides, invalid-value and oversized-request rejection, the specific alarm-level NeoPixel colors (blue/yellow/green) and buzzer tones, correct OLED content, and a directly-observed servo swing all confirmed correct on real hardware. A 300-request endurance test had zero failures. This closes roadmap tasks 17/18/19/21/24/26/29-37/32/48/56/57 with first-party hardware evidence (branches 5 and 11 advanced to implemented). Stage 3-5's remaining C++ was 'reviewed, never compiled' for the whole project's history until this session. A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) also enables remote testing without local-network access to the board. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned; that plus the emergency-stop/controller-fault placeholders are the main remaining hardware gaps. See docs/PROJECT_STATE.md.",
+      gates: {
+        "A-0": "done",
+        "A-1": "done",
+        "A-2": "done",
+        "A-3": "done",
+        "A-4": "done",
+        "A-5": "done",
+        "A-6": "done",
+        "B-0": "done",
+        "B-1": "done",
+        "B-2": "done",
+        "B-3": "done",
+        "B-4": "done",
+        "B-5": "done",
+        "C-0": "done",
+        "C-1": "done",
+        "C-2": "done",
+        "C-3": "done",
+        "C-4": "done"
+      },
+      notes: "Major firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability). All 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, found and fixed). env:irrigation_slice was flashed and extensively tested directly via curl and with the owner watching/listening: startup safe-state, all three window angles, DATA-STALE/LOW-TANK/rain overrides, invalid-value and oversized-request rejection, alarm-level NeoPixel colors and buzzer tones, correct OLED content, and a directly-observed servo swing -- plus the real FastAPI bridge relaying a real ESP response, not a mock. This closed 20 roadmap tasks with first-party hardware evidence (branches 5 and 11 advanced to implemented). A genuine bug was found and fixed in the process: the safety supervisor's 'data stale' input used the raw communication state (cleared after a single fresh reading) instead of the recovery tracker's confirmed-stable signal, so recovery never actually required the blueprint's documented 'several consecutive valid messages' -- fixed and reverified live (exactly 5 messages, as designed). This closed Gate A (First vertical slice), Gate B (Greenhouse MVP), and Gate C (Test platform) in full -- the first completion gates ever closed in this project, since gate tracking had sat at 0% the entire time before today. Gates D (Physical migration) and E (Platform expansion) remain open, needing real sensors/actuators and deliberate architecture decisions respectively. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };
-
-    for (const gate of gates) {
-      gate.criteria.forEach((_, index) => {
-        baseline.gates[`${gate.id}-${index}`] = "todo";
-      });
-    }
 
     const STORAGE_KEY = "agricontrol-taskmanagement-v1";
     const STALE_STORAGE_KEY = STORAGE_KEY + ":stale";
