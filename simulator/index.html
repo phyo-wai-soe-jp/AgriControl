@@ -271,32 +271,48 @@
     list-style: none;
     margin: 14px 0 0;
     padding: 0;
-    max-height: 240px;
+    max-height: 320px;
     overflow-y: auto;
-    font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
   ul#eventLog li {
-    padding: 8px 4px;
-    border-bottom: 1px solid var(--line);
     display: flex;
-    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--bg);
+    border-left: 3px solid var(--line);
+  }
+  ul#eventLog li.tone-good { border-left-color: var(--green); }
+  ul#eventLog li.tone-bad { border-left-color: var(--red); }
+  .event-body { flex: 1; min-width: 0; }
+  .event-top {
+    display: flex;
     align-items: baseline;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
   }
-  ul#eventLog li:last-child { border-bottom: none; }
-  ul#eventLog li .code {
-    font-weight: 700;
-    font-size: 0.72rem;
-    padding: 2px 7px;
-    border-radius: 999px;
-    background: var(--bg-accent);
+  .event-label { font-weight: 700; font-size: 0.86rem; }
+  ul#eventLog li.tone-good .event-label { color: var(--green); }
+  ul#eventLog li.tone-bad .event-label { color: var(--red); }
+  .event-time { color: var(--muted); font-size: 0.74rem; flex: none; white-space: nowrap; }
+  .event-detail {
     color: var(--muted);
-    flex: none;
+    font-size: 0.78rem;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  ul#eventLog li .code.good { background: var(--green-soft); color: var(--green); }
-  ul#eventLog li .code.bad { background: var(--red-soft); color: var(--red); }
-  ul#eventLog li .time { color: var(--muted); font-size: 0.76rem; flex: none; }
-  ul#eventLog li .detail { color: var(--ink); flex: 1 1 200px; }
+  ul#eventLog li.empty-state {
+    justify-content: center;
+    border-left: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.85rem;
+    padding: 26px 0;
+  }
 
   .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
 
@@ -534,14 +550,64 @@
         refreshEvents();
       }
 
-      // Event codes ending in these suffixes render as a red "bad" pill;
-      // ACCEPTED-style codes render green; everything else stays neutral.
-      // Purely presentational -- does not change what data is fetched or
-      // stored, only how the existing event log is displayed.
-      function codeTone(code) {
+      // Translates the bridge's internal event codes (backend/app.py's
+      // EventLog) into plain language -- a common user has no reason to
+      // know what "ESP_REJECTED" means. Falls back to the raw code for
+      // anything not in this list, so a future backend event code still
+      // shows up rather than disappearing.
+      const EVENT_LABELS = {
+        SENT: "Reading sent",
+        ACCEPTED: "Accepted",
+        ESP_REJECTED: "Rejected by device",
+        ESP_UNREACHABLE: "Device unreachable",
+        ACTUATOR_FEEDBACK_SIMULATED: "Fault simulated",
+        SESSION_RESET: "Session reset"
+      };
+
+      function eventLabel(code) {
+        return EVENT_LABELS[code] || code;
+      }
+
+      // Codes ending in these suffixes are shown with a red accent;
+      // ACCEPTED-style codes get a green accent; everything else stays
+      // neutral. Purely presentational -- does not change what data is
+      // fetched or stored, only how the existing event log is displayed.
+      function eventTone(code) {
         if (/REJECTED|UNREACHABLE|ERROR/.test(code)) return "bad";
         if (/ACCEPTED/.test(code)) return "good";
-        return "";
+        return "neutral";
+      }
+
+      function buildEventRow(item) {
+        const li = document.createElement("li");
+        li.className = "tone-" + eventTone(item.code);
+
+        const body = document.createElement("div");
+        body.className = "event-body";
+
+        const top = document.createElement("div");
+        top.className = "event-top";
+
+        const label = document.createElement("span");
+        label.className = "event-label";
+        label.textContent = eventLabel(item.code);
+        top.appendChild(label);
+
+        const time = document.createElement("span");
+        time.className = "event-time";
+        time.textContent = new Date(item.timestamp_ms).toLocaleTimeString();
+        top.appendChild(time);
+
+        body.appendChild(top);
+
+        const detail = document.createElement("div");
+        detail.className = "event-detail";
+        detail.textContent = item.detail;
+        detail.title = item.detail;
+        body.appendChild(detail);
+
+        li.appendChild(body);
+        return li;
       }
 
       async function refreshEvents() {
@@ -549,12 +615,15 @@
           const res = await fetch(bridgeUrl() + "/api/events?limit=20");
           const items = await res.json();
           elements.eventLog.innerHTML = "";
+          if (items.length === 0) {
+            const empty = document.createElement("li");
+            empty.className = "empty-state";
+            empty.textContent = "No events yet.";
+            elements.eventLog.appendChild(empty);
+            return;
+          }
           for (const item of items) {
-            const li = document.createElement("li");
-            const time = new Date(item.timestamp_ms).toLocaleTimeString();
-            const tone = codeTone(item.code);
-            li.innerHTML = `<span class="code${tone ? " " + tone : ""}">${item.code}</span><span class="time">${time}</span><span class="detail">${item.detail}</span>`;
-            elements.eventLog.appendChild(li);
+            elements.eventLog.appendChild(buildEventRow(item));
           }
         } catch (error) {
           // Bridge unreachable; leave the existing log as-is rather than
@@ -586,6 +655,8 @@
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
       elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
+
+      refreshEvents();
     })();
   </script>
 </body>
