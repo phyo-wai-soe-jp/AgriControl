@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-05T11:00:00+09:00",
+  "updated_at": "2026-08-05T12:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,11 +24,11 @@
     }
   },
   "metrics": {
-    "overall_percent": 51,
-    "roadmap_percent": 73,
-    "branch_percent": 61,
+    "overall_percent": 52,
+    "roadmap_percent": 76,
+    "branch_percent": 63,
     "gate_percent": 0,
-    "control_loop_percent": 68
+    "control_loop_percent": 70
   },
   "stages": [
     { "id": 1, "name": "Foundations", "intent": "Board, wiring, use case, safe states, protocol, and acceptance tests." },
@@ -61,11 +61,11 @@
     { "id": 14, "stage": 2, "status": "done", "title": "Test exact boundaries." },
     { "id": 15, "stage": 2, "status": "done", "title": "Test conflicting rules." },
     { "id": 16, "stage": 2, "status": "done", "title": "Test state sequences." },
-    { "id": 17, "stage": 3, "status": "active", "title": "Test OLED independently." },
-    { "id": 18, "stage": 3, "status": "active", "title": "Test NeoPixel independently." },
-    { "id": 19, "stage": 3, "status": "active", "title": "Test buzzer independently." },
+    { "id": 17, "stage": 3, "status": "done", "title": "Test OLED independently." },
+    { "id": 18, "stage": 3, "status": "done", "title": "Test NeoPixel independently." },
+    { "id": 19, "stage": 3, "status": "done", "title": "Test buzzer independently." },
     { "id": 20, "stage": 3, "status": "done", "title": "Test servo independently." },
-    { "id": 21, "stage": 3, "status": "active", "title": "Test all outputs together." },
+    { "id": 21, "stage": 3, "status": "done", "title": "Test all outputs together." },
     { "id": 22, "stage": 3, "status": "todo", "title": "Connect hardcoded decisions to outputs." },
     { "id": 23, "stage": 3, "status": "done", "title": "Confirm servo power does not reset the ESP." },
     { "id": 24, "stage": 4, "status": "active", "title": "Build the asynchronous runtime." },
@@ -139,7 +139,7 @@
     { "id": 8, "status": "implemented", "name": "Decision engine", "purpose": "Normal requested actions with reasons and rule IDs." },
     { "id": 9, "status": "implemented", "name": "Safety supervisor", "purpose": "Final authority and conflict resolution." },
     { "id": 10, "status": "implemented", "name": "Actuator abstraction", "purpose": "Requested, commanded, simulated, measured, and fault states." },
-    { "id": 11, "status": "drafted", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
+    { "id": 11, "status": "implemented", "name": "Physical outputs", "purpose": "OLED, LED, buzzer, and servo behavior." },
     { "id": 12, "status": "implemented", "name": "Observability", "purpose": "Meaningful events and state changes." },
     { "id": 13, "status": "implemented", "name": "Testing", "purpose": "Logic, integration, failure, endurance, and replay verification." },
     { "id": 14, "status": "implemented", "name": "Recording and replay", "purpose": "Experiment reproduction and regression comparison." },
@@ -218,7 +218,7 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 56, 57, 70],
+  "next_tasks": [22, 56, 57, 70],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",

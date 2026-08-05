@@ -71,6 +71,60 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (Stage 3 output tests closed: owner-confirmed on real AgriControl firmware)
+
+Agent: agent-02-hardware, agent-04-firmware-runtime (Claude Sonnet 5).
+
+Flashed `env:test_oled`, `env:test_neopixel`, `env:test_buzzer`, and
+`env:test_all_outputs` onto the physical board in sequence (each
+overwrites the previous, so only `test_all_outputs` -- the combined test
+-- was live when the owner looked). This is the piece none of the
+session's prior hardware work could close alone: flashing and running
+the code is now fully within reach, but confirming an OLED shows the
+right text, NeoPixels show the right color, or a buzzer makes a sound at
+all still needs eyes and ears this agent doesn't have.
+
+The owner directly observed the board while `test_all_outputs.cpp` was
+running (OLED text "AgriControl" / "All-outputs test" / "Stage 3 task
+21", all 3 NeoPixels blinking dim green on/off every second, an 880Hz
+buzzer tone once per second) and confirmed: "all works."
+
+Evidence:
+
+- All four environments built and flashed without error (build tooling
+  confirmed working across this whole session; not new evidence on its
+  own, but the prerequisite for this task).
+- Direct owner observation of the physical board, reported in this
+  conversation: OLED, NeoPixel, and buzzer all functioning correctly.
+
+Status updates:
+
+- Roadmap tasks 17 ("Test OLED independently"), 18 ("Test NeoPixel
+  independently"), 19 ("Test buzzer independently"), and 21 ("Test all
+  outputs together") all marked `done`. Tasks 17-19 rely on the combined
+  test's success as evidence for each individual peripheral (the owner
+  watched `test_all_outputs`, not each standalone environment
+  separately) -- a reasonable inference (a broken OLED or dead buzzer
+  would have surfaced in the combined test too, since they share the
+  same wiring/pins as their standalone counterparts), recorded honestly
+  as such rather than claiming separately-observed evidence that wasn't
+  actually gathered.
+- Branch 11 (Physical outputs) advanced `drafted` -> `implemented`.
+- `data/progress-baseline.json` metrics: overall 51% -> 52%, roadmap 73%
+  -> 76% (53/82 -> 57/82 tasks done), branches 61% -> 63%, control loop
+  68% -> 70% (branch 11 appears in loop step 8). `updated_at` bumped to
+  `2026-08-05T12:00:00+09:00`; `web-build/index.html`'s `BASELINE_VERSION`
+  bumped to match. Also trimmed the dashboard's `notes` field again,
+  which had grown long across several sessions' worth of appends.
+
+Next task: task 22 ("Connect hardcoded decisions to outputs") and tasks
+56/57 (irrigation_slice.cpp's specific NeoPixel color mapping and OLED
+soil/tank/pump/fan page content) are the natural next hardware items --
+both are now genuinely reachable the same way this session's other tasks
+were (flash + curl + owner observation), unlike task 22 which additionally
+needs the still-open pump/fan pin decision before it can mean anything
+physically.
+
 Date: 2026-08-05 JST (roadmap task 48 closed: real endurance test against the physical board)
 
 Agent: agent-04-firmware-runtime (Claude Sonnet 5).

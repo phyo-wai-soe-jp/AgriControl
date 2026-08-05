@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-05T11:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-05T12:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1939,11 +1939,11 @@
         "14": "done",
         "15": "done",
         "16": "done",
-        "17": "active",
-        "18": "active",
-        "19": "active",
+        "17": "done",
+        "18": "done",
+        "19": "done",
         "20": "done",
-        "21": "active",
+        "21": "done",
         "23": "done",
         "24": "active",
         "25": "done",
@@ -2004,13 +2004,13 @@
         "8": "implemented",
         "9": "implemented",
         "10": "implemented",
-        "11": "drafted",
+        "11": "implemented",
         "12": "implemented",
         "13": "implemented",
         "14": "implemented"
       },
       gates: {},
-      notes: "Pure-software roadmap work (Stages 2, 6-10) is genuinely executed and tested (logic/, backend/, simulator/). Firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability) -- all 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, was found and fixed in the process). env:irrigation_slice was flashed and tested directly via curl against its own local HTTP server: startup safe-state, normal automatic operation (fan/window/pump matching logic/decision.py exactly), DATA-STALE safety-override-and-recovery, LOW-TANK equipment protection, and invalid-temperature rejection all confirmed correct on real hardware (roadmap task 32 done; branch 5 advanced to implemented). A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) was also built and verified over MQTT, for remote testing without local-network access to the board; three real bugs were found and fixed in the process (MQTT reconnect backoff, non-blocking WiFi reconnect, a backwards Mosquitto ACL) and the WiFi-reconnect fix was ported back to the production files. Also ran a genuine 300-request endurance test straight against the physical board's local HTTP server -- zero failures, ~63ms/request average, board still fully responsive afterward (roadmap task 48 done, both software and hardware halves now confirmed). Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
+      notes: "Pure-software roadmap work (Stages 2, 6-10) is genuinely executed and tested (logic/, backend/, simulator/). Firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability) -- all 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, was found and fixed). env:irrigation_slice was flashed and tested directly via curl against its own local HTTP server: startup safe-state, normal automatic operation matching logic/decision.py exactly, DATA-STALE safety-override-and-recovery, LOW-TANK equipment protection, and invalid-temperature rejection all confirmed correct on real hardware (task 32 done, branch 5 implemented). A 300-request endurance test against the physical board had zero failures (task 48 done). Stage 3's individual output tests (OLED, NeoPixel, buzzer, all together) were flashed and the owner directly confirmed all working (tasks 17/18/19/21 done, branch 11 implemented). A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) enables remote testing without local-network access to the board. Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };
