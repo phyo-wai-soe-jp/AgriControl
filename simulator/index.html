@@ -108,10 +108,11 @@
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
-  @media (max-width: 620px) {
+  @media (max-width: 720px) {
+    .grid { grid-template-columns: 1fr; }
     body { padding: 20px 14px 48px; }
   }
 
@@ -342,7 +343,7 @@
           <input type="range" id="tankLevelSlider" min="0" max="100" step="1" value="70" />
         </div>
         <label class="inline-checkbox" style="margin-bottom: 14px;">
-          <input type="checkbox" id="rainToggle" /> Raining now
+          <input type="checkbox" id="liveUpdateCheckbox" /> Update live while dragging
         </label>
         <div class="btn-row">
           <button class="btn" id="sendBtn" type="button">Send to ESP</button>
@@ -411,7 +412,7 @@
         soilMoistureValue: document.getElementById("soilMoistureValue"),
         tankLevelSlider: document.getElementById("tankLevelSlider"),
         tankLevelValue: document.getElementById("tankLevelValue"),
-        rainToggle: document.getElementById("rainToggle")
+        liveUpdateCheckbox: document.getElementById("liveUpdateCheckbox")
       };
 
       function bridgeUrl() {
@@ -471,17 +472,16 @@
         elements.responseReasons.textContent = message;
       }
 
-      // Roadmap tasks 49-51: build the request body. Always sends all
-      // four values -- a common user has no reason to selectively omit
-      // a reading, that "unavailable reading" edge case is exercised at
-      // the backend/firmware test level instead (see
-      // backend/tests/test_app.py's TestIrrigationFields).
+      // Roadmap tasks 49-51: build the request body. rain is intentionally
+      // omitted (not part of this page's UI) -- it's an optional field on
+      // the bridge/ESP side, so leaving it out is a normal, valid message,
+      // matching firmware/include/irrigation.h's "unavailable reading"
+      // handling (holds the previous pump state, not "assume no rain").
       function buildSensorPayload() {
         return {
           temperature: parseFloat(elements.temperatureSlider.value),
           soil_moisture: parseFloat(elements.soilMoistureSlider.value),
-          water_level_percent: parseFloat(elements.tankLevelSlider.value),
-          rain: elements.rainToggle.checked ? 1 : 0
+          water_level_percent: parseFloat(elements.tankLevelSlider.value)
         };
       }
 
@@ -581,12 +581,21 @@
 
       elements.temperatureSlider.addEventListener("input", () => {
         elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
+        if (elements.liveUpdateCheckbox.checked) {
+          sendTemperature();
+        }
       });
       elements.soilMoistureSlider.addEventListener("input", () => {
         elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
+        if (elements.liveUpdateCheckbox.checked) {
+          sendTemperature();
+        }
       });
       elements.tankLevelSlider.addEventListener("input", () => {
         elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
+        if (elements.liveUpdateCheckbox.checked) {
+          sendTemperature();
+        }
       });
       elements.sendBtn.addEventListener("click", sendTemperature);
       elements.refreshEventsBtn.addEventListener("click", refreshEvents);
