@@ -297,14 +297,6 @@
   ul#eventLog li.tone-good .event-label { color: var(--green); }
   ul#eventLog li.tone-bad .event-label { color: var(--red); }
   .event-time { color: var(--muted); font-size: 0.74rem; flex: none; white-space: nowrap; }
-  .event-detail {
-    color: var(--muted);
-    font-size: 0.78rem;
-    margin-top: 3px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   ul#eventLog li.empty-state {
     justify-content: center;
     border-left: none;
@@ -599,12 +591,6 @@
         top.appendChild(time);
 
         body.appendChild(top);
-
-        const detail = document.createElement("div");
-        detail.className = "event-detail";
-        detail.textContent = item.detail;
-        detail.title = item.detail;
-        body.appendChild(detail);
 
         li.appendChild(body);
         return li;
