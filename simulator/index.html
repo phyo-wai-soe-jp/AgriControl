@@ -255,15 +255,29 @@
     font-size: 0.88rem;
   }
   .actuator-row + .actuator-row { border-top: 1px solid var(--line); }
-  .fan-indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    display: inline-block;
+
+  .fan-icon, .pump-icon {
+    width: 20px;
+    height: 20px;
     flex: none;
+    fill: var(--line);
+    transform-origin: center;
+    transition: fill 0.3s ease;
   }
-  .fan-indicator.on { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
-  .fan-indicator.off { background: var(--line); }
+  .fan-icon.on, .pump-icon.on { fill: var(--green); }
+  .fan-hub { fill: var(--panel); }
+
+  .fan-icon.on { animation: fan-spin 1s linear infinite; }
+  @keyframes fan-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .pump-icon.on { animation: pump-pulse 1s ease-in-out infinite; }
+  @keyframes pump-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.22); }
+  }
 
   .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
 </style>
@@ -320,11 +334,18 @@
           </div>
         </div>
         <div class="actuator-row">
-          <span class="fan-indicator off" id="fanIndicator"></span>
+          <svg class="fan-icon off" id="fanIndicator" viewBox="0 0 24 24" aria-hidden="true">
+            <ellipse cx="12" cy="7" rx="2.2" ry="4.5"/>
+            <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(120 12 12)"/>
+            <ellipse cx="12" cy="7" rx="2.2" ry="4.5" transform="rotate(240 12 12)"/>
+            <circle cx="12" cy="12" r="1.6" class="fan-hub"/>
+          </svg>
           <span id="fanLabel">Fan: off</span>
         </div>
         <div class="actuator-row">
-          <span class="fan-indicator off" id="pumpIndicator"></span>
+          <svg class="pump-icon off" id="pumpIndicator" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2.69s6 6.13 6 10.19a6 6 0 1 1-12 0c0-4.06 6-10.19 6-10.19Z"/>
+          </svg>
           <span id="pumpLabel">Pump: off</span>
         </div>
         <dl class="response-grid" id="responseGrid"></dl>
@@ -380,10 +401,14 @@
         const rotation = openFraction * 110; // degrees of visual swing
         elements.windowSash.style.transform = `rotateY(${rotation}deg)`;
 
-        elements.fanIndicator.className = "fan-indicator " + (fanOn ? "on" : "off");
+        // setAttribute, not .className -- on an SVG element, .className
+        // is a read-only SVGAnimatedString in some browsers, not a plain
+        // string like on an HTML element, so a direct assignment doesn't
+        // reliably work across browsers the way it does for windowSash.
+        elements.fanIndicator.setAttribute("class", "fan-icon " + (fanOn ? "on" : "off"));
         elements.fanLabel.textContent = "Fan: " + (fanOn ? "on" : "off");
 
-        elements.pumpIndicator.className = "fan-indicator " + (pumpOn ? "on" : "off");
+        elements.pumpIndicator.setAttribute("class", "pump-icon " + (pumpOn ? "on" : "off"));
         elements.pumpLabel.textContent = "Pump: " + (pumpOn ? "on" : "off");
       }
 
