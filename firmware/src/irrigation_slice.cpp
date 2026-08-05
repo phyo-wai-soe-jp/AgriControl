@@ -52,6 +52,23 @@ constexpr bool kEmergencyStopActive = false;
 constexpr bool kControllerFaultActive = false;
 constexpr bool kConfiguredSafeFanState = false;
 
+// Roadmap-hardening fix, ported from mqtt_test_harness.cpp 2026-08-05
+// after being found and validated there first: minimum gap between
+// WiFi.begin() calls from loop(). Calling WiFi.begin() again while a
+// connection attempt is already resolving produces "sta is connecting,
+// return error" and can itself destabilize the connection.
+constexpr unsigned long kWifiReconnectBackoffMs = 5000;
+unsigned long lastWifiAttemptMs = 0;
+
+void maintainWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  unsigned long nowMs = millis();
+  if (nowMs - lastWifiAttemptMs < kWifiReconnectBackoffMs) return;
+  lastWifiAttemptMs = nowMs;
+  Serial.println("WiFi not connected, retrying...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
 // The Arduino core's tone()/noTone() are not reliably supported on the
 // ESP32 (particularly on the C3's RISC-V core), so the buzzer is driven
 // directly through the LEDC PWM peripheral instead -- confirmed working
@@ -345,6 +362,8 @@ void setup() {
   shared.system.transitionTo(Mode::READY);
   shared.system.transitionTo(Mode::AUTOMATIC);
   shared.events.push(millis(), "WIFI_CONNECTED", WiFi.localIP().toString());
+  Serial.print("WiFi connected, IP: ");
+  Serial.println(WiFi.localIP());
 
   server.on("/sensor", HTTP_POST, handleSensorPost);
   server.onNotFound(handleNotFound);
@@ -352,6 +371,12 @@ void setup() {
 }
 
 void loop() {
+  // Roadmap-hardening fix (found and validated in mqtt_test_harness.cpp
+  // first, ported here 2026-08-05): this loop previously never retried a
+  // dropped WiFi connection at all -- if the AP dropped once, the board
+  // was stuck offline until manually reset. maintainWiFi() retries
+  // non-blockingly with a backoff, so it doesn't stall server.handleClient().
+  maintainWiFi();
   server.handleClient();
   shared.tick(millis());
   serviceBuzzer(millis());

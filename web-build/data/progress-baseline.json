@@ -6,7 +6,7 @@
     "date": "2026-08-04",
     "source_file": "ESP32_Virtual_Control_Lab_Blueprint.pdf"
   },
-  "updated_at": "2026-08-04T20:00:00+09:00",
+  "updated_at": "2026-08-05T11:00:00+09:00",
   "public_dashboard_url": "https://phyowaisoe.com/agricontrol/taskmanagement/",
   "repository_url": "https://github.com/phyo-wai-soe-jp/AgriControl.git",
   "status_model": {
@@ -24,11 +24,11 @@
     }
   },
   "metrics": {
-    "overall_percent": 49,
-    "roadmap_percent": 72,
-    "branch_percent": 59,
+    "overall_percent": 51,
+    "roadmap_percent": 73,
+    "branch_percent": 61,
     "gate_percent": 0,
-    "control_loop_percent": 66
+    "control_loop_percent": 68
   },
   "stages": [
     { "id": 1, "name": "Foundations", "intent": "Board, wiring, use case, safe states, protocol, and acceptance tests." },
@@ -76,7 +76,7 @@
     { "id": 29, "stage": 4, "status": "active", "title": "Add the HTTP server." },
     { "id": 30, "stage": 4, "status": "active", "title": "Add request-size and validation limits." },
     { "id": 31, "stage": 5, "status": "active", "title": "Implement only virtual temperature." },
-    { "id": 32, "stage": 5, "status": "todo", "title": "Send temperature with curl." },
+    { "id": 32, "stage": 5, "status": "done", "title": "Send temperature with curl." },
     { "id": 33, "stage": 5, "status": "active", "title": "Validate the message." },
     { "id": 34, "stage": 5, "status": "active", "title": "Calculate the window command." },
     { "id": 35, "stage": 5, "status": "active", "title": "Apply the servo command." },
@@ -92,7 +92,7 @@
     { "id": 45, "stage": 6, "status": "done", "title": "Display the ESP response." },
     { "id": 46, "stage": 6, "status": "done", "title": "Display the virtual window." },
     { "id": 47, "stage": 6, "status": "done", "title": "Add an event log." },
-    { "id": 48, "stage": 6, "status": "active", "title": "Run hundreds of updates." },
+    { "id": 48, "stage": 6, "status": "done", "title": "Run hundreds of updates." },
     { "id": 49, "stage": 7, "status": "done", "title": "Add soil moisture." },
     { "id": 50, "stage": 7, "status": "done", "title": "Add tank level." },
     { "id": 51, "stage": 7, "status": "done", "title": "Add rain." },
@@ -133,7 +133,7 @@
     { "id": 2, "status": "implemented", "name": "Website simulation", "purpose": "Virtual conditions, scenarios, faults, dashboards." },
     { "id": 3, "status": "implemented", "name": "FastAPI bridge", "purpose": "Browser-to-ESP communication, sessions, logs, replay, tests." },
     { "id": 4, "status": "implemented", "name": "Protocol", "purpose": "Stable messages and validation rules." },
-    { "id": 5, "status": "drafted", "name": "ESP communication", "purpose": "Move data without deciding behavior." },
+    { "id": 5, "status": "implemented", "name": "ESP communication", "purpose": "Move data without deciding behavior." },
     { "id": 6, "status": "implemented", "name": "Sensor abstraction", "purpose": "Virtual and physical inputs become canonical state." },
     { "id": 7, "status": "implemented", "name": "State management", "purpose": "Authoritative sensor, system, and actuator state." },
     { "id": 8, "status": "implemented", "name": "Decision engine", "purpose": "Normal requested actions with reasons and rule IDs." },
@@ -218,7 +218,7 @@
     { "id": 11, "title": "Update UI, outputs, and history", "branches": [11, 12, 2] },
     { "id": 12, "title": "Repeat without blocking", "branches": [5, 7, 13] }
   ],
-  "next_tasks": [17, 18, 19, 21, 22, 32, 48, 56, 57, 70],
+  "next_tasks": [17, 18, 19, 21, 22, 56, 57, 70],
   "known_unknowns": [
     "Exact RC servo model at CN3 (power source stability is confirmed)",
     "Pump and fan GPIO/relay pin assignment (not built into the ESP32-C3M-TRY eval board)",

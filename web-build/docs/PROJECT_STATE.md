@@ -71,6 +71,135 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (roadmap task 48 closed: real endurance test against the physical board)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+With `env:irrigation_slice` flashed and reachable at `192.168.0.11`
+(previous entry), the hardware half of roadmap task 48 became directly
+reachable too -- the bridge-side half was already proven in Stage 6
+(`backend/tests/test_app.py::TestEndurance`, 200 sequential updates
+against a fake ESP); this closes the other half against the real board.
+
+Ran 300 sequential `POST /sensor` requests directly against the physical
+ESP32 (varying temperature/soil/tank/rain each time, not the same
+payload repeated), checking every response for HTTP 200, `accepted:
+true`, and the correct echoed sequence number.
+
+Evidence:
+
+- 300/300 requests succeeded, zero failures.
+- ~63ms/request average (19.0s total for 300 requests).
+- A follow-up sanity request after the run confirmed the board was still
+  fully responsive and computing correct decisions, not just still
+  "up" -- no degradation from the sustained run.
+
+Status updates:
+
+- Roadmap task 48 ("Run hundreds of updates") marked `done` -- both
+  halves (bridge-side, board-side) now have real evidence.
+- `data/progress-baseline.json` metrics: overall 50% -> 51%, roadmap
+  stays 73% at this rounding (52/82 -> 53/82 tasks done;
+  branch/control-loop percentages unchanged, no branch status crossed a
+  threshold). `updated_at` bumped to `2026-08-05T11:00:00+09:00`;
+  `web-build/index.html`'s `BASELINE_VERSION` bumped to match.
+
+Date: 2026-08-05 JST (roadmap task 32 closed with real hardware: env:irrigation_slice flashed and curl-tested directly)
+
+Agent: agent-04-firmware-runtime (Claude Sonnet 5).
+
+Directly following the MQTT harness milestone below: ported the
+WiFi-reconnect-robustness fix (found there) back to `runtime.cpp`,
+`vertical_slice.cpp`, and `irrigation_slice.cpp` -- all three previously
+never retried a dropped WiFi connection at all (worse than the harness's
+original bug, which at least tried, just unsafely). Then flashed
+`env:irrigation_slice` itself -- the actual production file, not the
+parallel harness -- onto the physical board and tested it directly via
+`curl` against its own local HTTP server, closing roadmap task 32 with
+first-party evidence instead of the harness's (still valuable, but
+one-file-removed) evidence.
+
+Found the board's local IP (`192.168.0.11`) via a subnet port scan since
+serial output remained unreliable to capture right after a fresh flash
+(same ESP32-C3 native-USB-CDC quirk as the harness session -- the ROM
+bootloader's own messages come through fine, application-level `Serial`
+output does not, for reasons not fully run to ground, but consistently
+reproducible and evidently not indicative of any actual fault, since the
+broker/HTTP logs independently confirm the device works correctly
+regardless of what serial shows).
+
+Changed:
+
+- Added the same `maintainWiFi()` / backoff pattern from
+  `mqtt_test_harness.cpp` to `runtime.cpp`, `vertical_slice.cpp`, and
+  `irrigation_slice.cpp`'s `loop()` functions (setup()'s blocking connect
+  is unchanged and still setup()-only). Also added a `Serial.println` of
+  the assigned IP on connect to all three, for whenever serial capture
+  does work.
+
+Evidence -- six real `curl` requests against `http://192.168.0.11/sensor`,
+all responses reproduced in full below because they are the evidence,
+not just a claim of evidence:
+
+1. First-ever message (`isStartup`): `mode: safety_override`,
+   `alarm_level: startup_indication`, safe state (fan off, window 10,
+   pump off), `STARTUP` override -- correct.
+2. After a gap (data gone stale again between test batches):
+   `mode: safety_override`, `DATA-STALE` override, safe state -- correct.
+3. Fresh data, temperature=32C/soil=20%/rain=0: `mode: automatic`,
+   `fan: true`, `window_angle: 90`, `pump: true`,
+   `[TEMPERATURE-002, IRRIGATION-001]` -- matches `logic/decision.py`
+   exactly (28C < 32C <= 35C -> fan on/window half; moisture < 30% and no
+   rain -> pump on).
+4. Cold temperature (20C) + wet soil (50%): `fan: false`,
+   `window_angle: 10`, `pump: false`,
+   `[TEMPERATURE-001, IRRIGATION-002]` -- correct.
+5. Low tank (soil 20%/tank 10%, after a warm-up reading to clear
+   staleness): decision engine still requests the pump
+   (`IRRIGATION-001` reasoning), safety supervisor forces it off,
+   `LOW-TANK` override -- the `EQUIPMENT_PROTECTION` tier confirmed
+   correct on real hardware, matching the blueprint's own worked
+   conflict example exactly.
+6. Invalid temperature (999C): HTTP 400, rejected before reaching the
+   decision engine at all.
+
+**One genuine, minor discrepancy found and worth recording honestly**:
+`firmware/include/irrigation.h` labels the "soil_moisture or rain
+reading unavailable" branch with rule name `"IRRIGATION-HOLD"`
+(`irrigation.h:69`) -- `logic/decision.py`'s equivalent branch (lines
+73-75) does not add *any* triggered-rule entry for this case, only a
+reason string. The actual computed pump/fan/window values are identical
+either way; this only affects what appears in the `triggered_rules`
+diagnostic array. This means the "line-by-line verified port" claim made
+in earlier sessions wasn't perfectly literal in this one spot. Not fixed
+here -- deciding whether `decision.py` should gain a matching rule label,
+or `irrigation.h` should drop it, is a small design call for a future
+session or the owner, not something to change unilaterally while
+documenting a test result. Found only because the code was actually run,
+not reviewed -- exactly the kind of thing this whole exercise was for.
+
+Status updates:
+
+- Roadmap task 32 ("Send temperature with curl") marked `done` -- direct,
+  first-party evidence from the actual named transport and file, unlike
+  the MQTT harness session's evidence.
+- Branch 5 (ESP communication) advanced `drafted` -> `implemented` --
+  real physical HTTP communication now confirmed, a stronger bar than
+  branches 6-10's host-test-only evidence.
+- `data/progress-baseline.json` metrics: overall 49% -> 50%, roadmap 72%
+  -> 73% (51/82 -> 52/82 tasks done), branches 59% -> 61%, control loop
+  66% -> 68% (loop steps 3 and 12 both reference branch 5). `updated_at`
+  bumped to `2026-08-05T10:00:00+09:00`; `web-build/index.html`'s
+  `BASELINE_VERSION` bumped to match.
+
+Next task: `vertical_slice.cpp` and `runtime.cpp` themselves are still
+compiled-only, not individually flashed (though `irrigation_slice.cpp`
+is a strict superset of both, so this is a formality more than a real
+gap). The bigger remaining items are physical: pump/fan pin assignment,
+Stage 3's OLED/NeoPixel/buzzer/all-outputs tests using AgriControl's own
+firmware specifically (not the other project's), and the emergency-stop
+switch decision.
+
 Date: 2026-08-05 JST (first real hardware verification of AgriControl's own compiled firmware)
 
 Agent: agent-04-firmware-runtime, agent-02-hardware (Claude Sonnet 5).

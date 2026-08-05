@@ -1918,7 +1918,7 @@
     // loadState() uses it to detect and refuse to silently apply local
     // browser edits saved against an older version of this data -- see
     // docs/PROJECT_STATE.md for the incident this was added to prevent.
-    const BASELINE_VERSION = "2026-08-04T20:00:00+09:00";
+    const BASELINE_VERSION = "2026-08-05T11:00:00+09:00";
 
     const baseline = {
       version: BASELINE_VERSION,
@@ -1953,6 +1953,7 @@
         "29": "active",
         "30": "active",
         "31": "active",
+        "32": "done",
         "33": "active",
         "34": "active",
         "35": "active",
@@ -1968,7 +1969,7 @@
         "45": "done",
         "46": "done",
         "47": "done",
-        "48": "active",
+        "48": "done",
         "49": "done",
         "50": "done",
         "51": "done",
@@ -1997,7 +1998,7 @@
         "2": "implemented",
         "3": "implemented",
         "4": "implemented",
-        "5": "drafted",
+        "5": "implemented",
         "6": "implemented",
         "7": "implemented",
         "8": "implemented",
@@ -2009,7 +2010,7 @@
         "14": "implemented"
       },
       gates: {},
-      notes: "Pure-software roadmap work (Stages 2, 6-10) is genuinely executed and tested (logic/, backend/, simulator/); firmware/ (Stages 3-5, 7) is reviewed-only C++, never compiled -- no PlatformIO toolchain, board, or WiFi network in this environment. Pump/fan are computed and reported but never physically driven -- no pump/fan pin assigned. Latest sessions: Stage 8 (tasks 58-60) added 7 end-to-end scenario tests against a fake ESP built on the real decision/safety logic. Stage 9 (tasks 61-66) added logic/actuator_feedback.py: simulated fan/pump/servo feedback with injectable faults (delay, failed startup, stuck-on/off, wrong position), feeding detected faults into the safety supervisor's existing controller_fault input. Stage 10 (tasks 67-69, 71) added logic/replay.py: records decision cycles with rule versions and replays them against current rules to catch drift (proven by mutating a real threshold mid-test), plus a 'Known Limits' section in docs/PROJECT_STATE.md. Task 70 (watchdog) intentionally not attempted -- blueprint gates it on runtime stability. Also ported a hardware-verified buzzer fix (LEDC PWM instead of tone()) from a separate hardware-tested project on the same ESP32-C3M-TRY board. Most recent: logic/protocol.py ports firmware's stale-data detection, recovery tracking, and message/value validation (previously C++-only) to host-tested Python (roadmap tasks 25/27/28/38/39/40) -- 84 host tests passing total. See docs/PROJECT_STATE.md.",
+      notes: "Pure-software roadmap work (Stages 2, 6-10) is genuinely executed and tested (logic/, backend/, simulator/). Firmware milestone 2026-08-05: a PlatformIO toolchain and the physical ESP32-C3M-TRY board turned out to be reachable from this environment all along (a wrong assumption corrected, not a new capability) -- all 10 firmware environments now compile (a project-wide build_src_filter bug, broken since Stage 3, was found and fixed in the process). env:irrigation_slice was flashed and tested directly via curl against its own local HTTP server: startup safe-state, normal automatic operation (fan/window/pump matching logic/decision.py exactly), DATA-STALE safety-override-and-recovery, LOW-TANK equipment protection, and invalid-temperature rejection all confirmed correct on real hardware (roadmap task 32 done; branch 5 advanced to implemented). A parallel env:mqtt_test_harness (ad-hoc, not a roadmap task) was also built and verified over MQTT, for remote testing without local-network access to the board; three real bugs were found and fixed in the process (MQTT reconnect backoff, non-blocking WiFi reconnect, a backwards Mosquitto ACL) and the WiFi-reconnect fix was ported back to the production files. Also ran a genuine 300-request endurance test straight against the physical board's local HTTP server -- zero failures, ~63ms/request average, board still fully responsive afterward (roadmap task 48 done, both software and hardware halves now confirmed). Pump/fan are still computed and reported but never physically driven -- no pump/fan pin assigned. See docs/PROJECT_STATE.md.",
       communication: clone(defaultCommunication),
       agents: clone(defaultAgents)
     };

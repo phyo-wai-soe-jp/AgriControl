@@ -41,6 +41,23 @@ namespace {
 // small and reviewable.
 constexpr size_t kMaxRequestBodyBytes = 2048;
 
+// Roadmap-hardening fix, ported from mqtt_test_harness.cpp 2026-08-05
+// after being found and validated there first: minimum gap between
+// WiFi.begin() calls from loop(). Calling WiFi.begin() again while a
+// connection attempt is already resolving produces "sta is connecting,
+// return error" and can itself destabilize the connection.
+constexpr unsigned long kWifiReconnectBackoffMs = 5000;
+unsigned long lastWifiAttemptMs = 0;
+
+void maintainWiFi() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  unsigned long nowMs = millis();
+  if (nowMs - lastWifiAttemptMs < kWifiReconnectBackoffMs) return;
+  lastWifiAttemptMs = nowMs;
+  Serial.println("WiFi not connected, retrying...");
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+}
+
 WebServer server(80);
 SharedState shared;
 
@@ -172,6 +189,8 @@ void setup() {
   shared.system.transitionTo(Mode::READY);
   shared.system.transitionTo(Mode::AUTOMATIC);
   shared.events.push(millis(), "WIFI_CONNECTED", WiFi.localIP().toString());
+  Serial.print("WiFi connected, IP: ");
+  Serial.println(WiFi.localIP());
 
   server.on("/sensor", HTTP_POST, handleSensorPost);
   server.onNotFound(handleNotFound);
@@ -179,6 +198,7 @@ void setup() {
 }
 
 void loop() {
+  maintainWiFi();
   server.handleClient();
   shared.tick(millis());
 }
