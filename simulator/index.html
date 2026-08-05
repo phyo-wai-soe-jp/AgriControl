@@ -472,16 +472,23 @@
         elements.responseReasons.textContent = message;
       }
 
-      // Roadmap tasks 49-51: build the request body. rain is intentionally
-      // omitted (not part of this page's UI) -- it's an optional field on
-      // the bridge/ESP side, so leaving it out is a normal, valid message,
-      // matching firmware/include/irrigation.h's "unavailable reading"
-      // handling (holds the previous pump state, not "assume no rain").
+      // Roadmap tasks 49-51: build the request body. rain has no UI
+      // control on this page, but is still sent as a fixed 0 (not
+      // raining) rather than omitted -- found the hard way (2026-08-06):
+      // firmware/include/canonical.h's staleness tracking is per-sensor,
+      // so once a session has ever reported a rain reading, that sensor
+      // must keep being refreshed or it goes stale forever, which
+      // permanently forces the safety supervisor's DATA-STALE override
+      // (fan/pump/window all held safe) regardless of the other three
+      // readings being perfectly fresh. Omitting the field entirely is
+      // only safe for a sensor that was NEVER reported in the first
+      // place, not one this page used to send and then stopped.
       function buildSensorPayload() {
         return {
           temperature: parseFloat(elements.temperatureSlider.value),
           soil_moisture: parseFloat(elements.soilMoistureSlider.value),
-          water_level_percent: parseFloat(elements.tankLevelSlider.value)
+          water_level_percent: parseFloat(elements.tankLevelSlider.value),
+          rain: 0
         };
       }
 
@@ -605,6 +612,20 @@
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
 
       refreshEvents();
+
+      // Keeps the ESP's view of these readings continuously fresh while
+      // this page stays open. Necessary, not cosmetic: firmware/include/
+      // canonical.h's staleness timeout is 10s, and Gate A's "recovery
+      // requires stable communication" needs several consecutive fresh
+      // messages in a row -- a real user sending a reading only every
+      // so often (more than 10s apart) would re-trigger the safety
+      // supervisor's DATA-STALE override on nearly every interaction,
+      // forcing fan/pump/window off each time even though nothing is
+      // actually wrong. Resending the current values every 4s (well
+      // under the 10s timeout) makes this page behave like the
+      // continuously-connected sensor the blueprint describes, without
+      // changing any tested firmware/safety behavior.
+      setInterval(sendTemperature, 4000);
     })();
   </script>
 </body>
