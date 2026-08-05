@@ -165,7 +165,6 @@
   .panel--irrigation { --accent: var(--blue); }
   .panel--response { --accent: var(--green); }
   .panel--actuators { --accent: var(--purple); }
-  .panel--fault { --accent: var(--red); }
   .panel--events { --accent: var(--muted); }
 
   .panel h2 {
@@ -357,12 +356,7 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14 0"/><path d="M8.5 16.05a6 6 0 0 1 7 0"/><path d="M12 20h.01"/></svg>
           Connection
         </h2>
-        <div class="row">
-          <label for="bridgeUrl">FastAPI bridge base URL</label>
-          <input type="text" id="bridgeUrl" value="https://phyowaisoe.com/agricontrol/bridge" />
-        </div>
         <div class="btn-row">
-          <button class="btn" id="checkHealthBtn" type="button">Check connection</button>
           <button class="btn secondary" id="resetSessionBtn" type="button">Reset session</button>
         </div>
         <div class="row" style="margin-top: 14px; margin-bottom: 0;">
@@ -445,45 +439,6 @@
         </div>
       </section>
 
-      <section class="panel panel--fault" id="actuatorFaultPanel">
-        <h2>
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-          Actuator fault simulator
-        </h2>
-        <p class="reasons" style="margin: 0 0 14px;">
-          Simulates feedback for the chosen actuator (via <code>logic/actuator_feedback.py</code>,
-          unmodified here) and sends it through the bridge to the ESP's <code>/feedback</code>
-          endpoint, so the ESP's own safety supervisor reacts through <code>controller_fault</code>
-          -- closing the loop the blueprint's page-1 diagram depicts ("F. Actuator Simulator").
-        </p>
-        <div class="row">
-          <label for="faultActuatorSelect">Actuator</label>
-          <select id="faultActuatorSelect">
-            <option value="fan">Fan</option>
-            <option value="pump">Pump</option>
-            <option value="window">Window</option>
-          </select>
-        </div>
-        <div class="row">
-          <label for="faultModeSelect">Fault mode</label>
-          <select id="faultModeSelect"></select>
-        </div>
-        <div class="row" id="faultCommandedStateRow">
-          <label class="inline-checkbox"><input type="checkbox" id="faultCommandedState" /> Commanded on</label>
-        </div>
-        <div class="row" id="faultCommandedDegRow" style="display: none;">
-          <label for="faultCommandedDeg">Commanded window angle</label>
-          <input type="number" id="faultCommandedDeg" min="0" max="180" value="90" />
-        </div>
-        <div class="btn-row">
-          <button class="btn" id="sendFaultBtn" type="button">Send fault to ESP</button>
-        </div>
-        <div class="row" style="margin-top: 14px; margin-bottom: 0;">
-          <span class="badge idle" id="faultResultBadge">No feedback sent yet</span>
-        </div>
-        <dl class="response-grid" id="faultResultGrid"></dl>
-      </section>
-
       <section class="panel panel--events full-width" id="eventLogPanel">
         <h2>
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
@@ -501,9 +456,11 @@
     (function () {
       "use strict";
 
+      // The bridge this page talks to -- not user-configurable, so the
+      // page works immediately with no setup for anyone opening it.
+      const BRIDGE_URL = "https://phyowaisoe.com/agricontrol/bridge";
+
       const elements = {
-        bridgeUrl: document.getElementById("bridgeUrl"),
-        checkHealthBtn: document.getElementById("checkHealthBtn"),
         resetSessionBtn: document.getElementById("resetSessionBtn"),
         connectionBadge: document.getElementById("connectionBadge"),
         topbarStatusDot: document.getElementById("topbarStatusDot"),
@@ -529,20 +486,11 @@
         tankLevelSlider: document.getElementById("tankLevelSlider"),
         tankLevelValue: document.getElementById("tankLevelValue"),
         rainEnabled: document.getElementById("rainEnabled"),
-        rainToggle: document.getElementById("rainToggle"),
-        faultActuatorSelect: document.getElementById("faultActuatorSelect"),
-        faultModeSelect: document.getElementById("faultModeSelect"),
-        faultCommandedStateRow: document.getElementById("faultCommandedStateRow"),
-        faultCommandedState: document.getElementById("faultCommandedState"),
-        faultCommandedDegRow: document.getElementById("faultCommandedDegRow"),
-        faultCommandedDeg: document.getElementById("faultCommandedDeg"),
-        sendFaultBtn: document.getElementById("sendFaultBtn"),
-        faultResultBadge: document.getElementById("faultResultBadge"),
-        faultResultGrid: document.getElementById("faultResultGrid")
+        rainToggle: document.getElementById("rainToggle")
       };
 
       function bridgeUrl() {
-        return elements.bridgeUrl.value.replace(/\/$/, "");
+        return BRIDGE_URL;
       }
 
       function setBadge(el, text, tone) {
@@ -702,97 +650,6 @@
         }
       }
 
-      // Roadmap task 66: which fault modes actually do anything for a given
-      // actuator kind, matching logic/actuator_feedback.py's simulators --
-      // WRONG_POSITION only affects the servo, STUCK_ON/STUCK_OFF/
-      // FAILED_STARTUP only affect the binary (fan/pump) actuators. Listing
-      // only the applicable modes avoids offering a fault choice that would
-      // silently do nothing.
-      const FAULT_MODES_BY_ACTUATOR = {
-        fan: [
-          ["none", "None"],
-          ["failed_startup", "Failed startup"],
-          ["stuck_on", "Stuck on"],
-          ["stuck_off", "Stuck off"]
-        ],
-        pump: [
-          ["none", "None"],
-          ["failed_startup", "Failed startup"],
-          ["stuck_on", "Stuck on"],
-          ["stuck_off", "Stuck off"]
-        ],
-        window: [
-          ["none", "None"],
-          ["wrong_position", "Wrong position"]
-        ]
-      };
-
-      function updateFaultModeOptions() {
-        const actuator = elements.faultActuatorSelect.value;
-        const modes = FAULT_MODES_BY_ACTUATOR[actuator];
-        elements.faultModeSelect.innerHTML = "";
-        for (const [value, label] of modes) {
-          const option = document.createElement("option");
-          option.value = value;
-          option.textContent = label;
-          elements.faultModeSelect.appendChild(option);
-        }
-        const isWindow = actuator === "window";
-        elements.faultCommandedStateRow.style.display = isWindow ? "none" : "block";
-        elements.faultCommandedDegRow.style.display = isWindow ? "block" : "none";
-      }
-
-      function renderFaultResult(body) {
-        const hasFault = Boolean(body.fault_code);
-        setBadge(elements.faultResultBadge, hasFault ? "Fault: " + body.fault_code : "No fault", hasFault ? "warn" : "ok");
-        elements.faultResultGrid.innerHTML = "";
-        const rows = [
-          ["Measured state", body.measured_state],
-          ["Fault code", body.fault_code || "-"],
-          ["ESP controller_fault_active", body.esp_response ? body.esp_response.controller_fault_active : "-"]
-        ];
-        for (const [label, value] of rows) {
-          const dt = document.createElement("dt");
-          dt.textContent = label;
-          const dd = document.createElement("dd");
-          dd.textContent = value === undefined || value === null ? "-" : String(value);
-          elements.faultResultGrid.appendChild(dt);
-          elements.faultResultGrid.appendChild(dd);
-        }
-      }
-
-      async function sendActuatorFeedback() {
-        const actuator = elements.faultActuatorSelect.value;
-        const payload = { actuator: actuator, fault_mode: elements.faultModeSelect.value };
-        if (actuator === "window") {
-          payload.commanded_window_deg = parseInt(elements.faultCommandedDeg.value, 10);
-        } else {
-          payload.commanded_state = elements.faultCommandedState.checked;
-        }
-
-        try {
-          const res = await fetch(bridgeUrl() + "/api/actuator/feedback", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-          const body = await res.json();
-          if (!res.ok) {
-            setBadge(elements.faultResultBadge, "Error", "err");
-            elements.faultResultGrid.innerHTML = "";
-            return;
-          }
-          renderFaultResult(body);
-        } catch (error) {
-          setBadge(elements.faultResultBadge, "Bridge unreachable", "err");
-          elements.faultResultGrid.innerHTML = "";
-        }
-        refreshEvents();
-      }
-
-      elements.faultActuatorSelect.addEventListener("change", updateFaultModeOptions);
-      elements.sendFaultBtn.addEventListener("click", sendActuatorFeedback);
-
       elements.temperatureSlider.addEventListener("input", () => {
         elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
         if (elements.autoSendCheckbox.checked) {
@@ -812,14 +669,17 @@
         }
       });
       elements.sendBtn.addEventListener("click", sendTemperature);
-      elements.checkHealthBtn.addEventListener("click", checkHealth);
       elements.resetSessionBtn.addEventListener("click", resetSession);
       elements.refreshEventsBtn.addEventListener("click", refreshEvents);
 
       elements.temperatureValue.textContent = parseFloat(elements.temperatureSlider.value).toFixed(1);
       elements.soilMoistureValue.textContent = elements.soilMoistureSlider.value;
       elements.tankLevelValue.textContent = elements.tankLevelSlider.value;
-      updateFaultModeOptions();
+
+      // No "Check connection" button anymore -- check automatically on
+      // load so the connection badge is meaningful without requiring a
+      // click first.
+      checkHealth();
     })();
   </script>
 </body>
