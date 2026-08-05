@@ -285,17 +285,48 @@
   .valve-wheel-rim { fill: none; stroke: var(--red); stroke-width: 1.7; }
   .valve-spoke, .valve-hub { fill: var(--red); }
 
-  /* Water dripping from the open pipe end, only while pumping. */
+  /* Strong, forceful water from the open pipe end, only while pumping:
+     a continuously pulsing solid stream, fast/large falling droplets,
+     and impact splashes at the bottom -- reads as a real gush, not a
+     slow occasional drip. */
+  .pump-stream {
+    fill: var(--blue);
+    opacity: 0;
+    transform-origin: 12px 22px;
+  }
+  .pump-icon.on .pump-stream {
+    animation: pump-stream-flow 0.45s ease-in-out infinite;
+  }
+  @keyframes pump-stream-flow {
+    0%, 100% { opacity: 0.55; transform: scaleY(0.92); }
+    50% { opacity: 0.9; transform: scaleY(1.1); }
+  }
+
   .pump-drop { fill: var(--blue); opacity: 0; transform-origin: center; }
-  .pump-icon.on .pump-drop-1 { animation: pump-drip-fall 1.1s ease-in infinite; }
-  .pump-icon.on .pump-drop-2 { animation: pump-drip-fall 1.1s ease-in infinite 0.35s; }
-  .pump-icon.on .pump-drop-3 { animation: pump-drip-fall 1.1s ease-in infinite 0.7s; }
+  .pump-icon.on .pump-drop-1 { animation: pump-drip-fall 0.55s linear infinite; }
+  .pump-icon.on .pump-drop-2 { animation: pump-drip-fall 0.55s linear infinite 0.14s; }
+  .pump-icon.on .pump-drop-3 { animation: pump-drip-fall 0.55s linear infinite 0.28s; }
 
   @keyframes pump-drip-fall {
     0% { transform: translate(0, 0); opacity: 0; }
-    15% { opacity: 1; }
-    75% { opacity: 1; }
-    100% { transform: translate(0, 7px); opacity: 0; }
+    10% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { transform: translate(0, 9px); opacity: 0; }
+  }
+
+  .pump-splash { fill: var(--blue); opacity: 0; transform-origin: center; }
+  .pump-icon.on .pump-splash-1 { animation: pump-splash-left 0.5s ease-out infinite; }
+  .pump-icon.on .pump-splash-2 { animation: pump-splash-right 0.5s ease-out infinite 0.25s; }
+
+  @keyframes pump-splash-left {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(-3.5px, -1.5px) scale(0.35); opacity: 0; }
+  }
+  @keyframes pump-splash-right {
+    0% { transform: translate(0, 0) scale(1); opacity: 0; }
+    20% { opacity: 1; }
+    100% { transform: translate(3.5px, -1.5px) scale(0.35); opacity: 0; }
   }
 
   .reasons { font-size: 0.82rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
@@ -376,9 +407,12 @@
               <rect class="valve-spoke" x="11.1" y="5.2" width="1.8" height="11.6" rx="0.9"/>
               <rect class="valve-spoke" x="6.2" y="10.1" width="11.6" height="1.8" rx="0.9"/>
               <circle class="valve-hub" cx="12" cy="11" r="2.2"/>
-              <circle class="pump-drop pump-drop-1" cx="10.5" cy="22" r="1"/>
-              <circle class="pump-drop pump-drop-2" cx="12" cy="22" r="1.2"/>
-              <circle class="pump-drop pump-drop-3" cx="13.5" cy="22" r="1"/>
+              <rect class="pump-stream" x="10.3" y="22" width="3.4" height="6" rx="1.2"/>
+              <circle class="pump-drop pump-drop-1" cx="10.3" cy="22" r="1.3"/>
+              <circle class="pump-drop pump-drop-2" cx="12" cy="22" r="1.5"/>
+              <circle class="pump-drop pump-drop-3" cx="13.7" cy="22" r="1.3"/>
+              <circle class="pump-splash pump-splash-1" cx="11" cy="28" r="1"/>
+              <circle class="pump-splash pump-splash-2" cx="13" cy="28" r="1"/>
             </svg>
             <span class="actuator-caption" id="pumpLabel">Pump: off</span>
           </div>
