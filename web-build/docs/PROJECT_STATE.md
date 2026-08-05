@@ -71,6 +71,46 @@ not change durable project state until they are exported and committed.
 
 ## Completed Work
 
+Date: 2026-08-05 JST (Stage 8's fake ESP extended to actually model recovery, closing a real scope gap)
+
+Agent: agent-05-backend (Claude Sonnet 5).
+
+Followed through on the previous entry's own flagged follow-up:
+`backend/tests/test_scenarios.py`'s fake ESP never modeled staleness or
+recovery at all (`data_stale` always defaulted to `False`, `is_startup`
+was hardcoded `False`), so Stage 8's scenario suite -- despite testing 7
+named conditions -- had no scenario proving the "recovery requires
+stable valid messages" behavior through the actual bridge protocol path,
+only in `tests/test_protocol.py`'s pure `logic/` integration test and on
+live hardware.
+
+Changed:
+
+- Added `real_esp_responder_with_recovery()` to
+  `backend/tests/test_scenarios.py`: unlike the existing
+  `real_esp_responder()` (a single isolated reading, already
+  "recovered"), this tracks `SystemState`/`RecoveryTracker` across a
+  *sequence* of requests using `evaluate_tick()` and
+  `is_data_stale_for_safety()` -- mirroring the real ESP's `SharedState`
+  and the corrected firmware wiring exactly.
+- Added `test_recovery_requires_stable_valid_messages_through_the_bridge`:
+  starts mid-recovery (`Mode.WARNING`) and sends
+  `RECOVERY_CONSECUTIVE_VALID_REQUIRED` (5) identical readings through
+  `/api/temperature`, asserting the bridge relays `safety_override` for
+  all 5, then `automatic` on the 6th -- the same behavior verified at
+  three other levels now (host-level logic integration, live hardware,
+  and now the actual bridge protocol path a real website/simulator would
+  go through).
+
+Evidence:
+
+- `python3 -m pytest backend/tests/` -> 25 passed (up from 24).
+- `python3 -m unittest discover -s tests` -> 93 passed, unaffected.
+
+Status updates: none -- this adds test coverage for behavior already
+counted as evidence for Gate A in an earlier entry; no new roadmap task
+or gate criterion is claimed from it.
+
 Date: 2026-08-05 JST (host-level regression test added for the recovery-gating fix)
 
 Agent: agent-03-logic (Claude Sonnet 5).

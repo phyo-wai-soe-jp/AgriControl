@@ -14,6 +14,16 @@ physical ESP's real round-trip time -- there is no board or network here.
 Communication-loss and invalid-data handling are exercised at the bridge
 protocol layer (502 + event log), matching what backend/app.py actually does
 when the real ESP is unreachable or rejects a message.
+
+The parametrized SCENARIOS below are single, independent readings and use
+real_esp_responder() (is_startup/data_stale both fixed False -- already
+"recovered"). test_recovery_requires_stable_valid_messages_through_the_bridge
+is different: it uses real_esp_responder_with_recovery(), which tracks
+SystemState/RecoveryTracker across a *sequence* of requests the way the
+real ESP's SharedState does, to prove Gate A's "recovery requires stable
+valid messages" through the actual bridge protocol path -- added
+2026-08-05 after a real bug was found where the firmware's dataStale
+input wasn't actually wired to this state at all.
 """
 from __future__ import annotations
 
@@ -27,9 +37,16 @@ from fastapi.testclient import TestClient
 
 from backend import app as app_module
 from backend.app import BridgeSession, EventLog
-from logic.protocol import is_valid_temperature_c
+from logic.protocol import (
+    RECOVERY_CONSECUTIVE_VALID_REQUIRED,
+    RecoveryTracker,
+    evaluate_tick,
+    is_data_stale_for_safety,
+    is_valid_temperature_c,
+)
 from logic.safety import SafetyPriority, evaluate_safety
 from logic.decision import evaluate_decision
+from logic.system_state import CommunicationState, Mode, SystemState
 from tests.helpers import make_sensors
 
 
@@ -74,6 +91,74 @@ def real_esp_responder(previous_pump_requested: bool = False) -> Callable[[str, 
             is_startup=False,
         )
         state["previous_pump_requested"] = decision.requested_pump
+
+        body = {
+            "accepted": True,
+            "sequence": payload["sequence"],
+            "mode": "automatic" if safety.applied_priority == SafetyPriority.AUTOMATIC_OPERATION else "safety_override",
+            "alarm_level": safety.alarm_level,
+            "commands": {
+                "fan": safety.commanded_fan,
+                "window_angle": safety.commanded_window_deg,
+                "pump": safety.commanded_pump,
+            },
+            "triggered_rules": decision.triggered_rules + safety.overrides,
+            "reasons": decision.reasons,
+        }
+        return 200, body
+
+    return responder
+
+
+def real_esp_responder_with_recovery(initial_mode: Mode = Mode.AUTOMATIC) -> Callable[[str, dict], Tuple[int, dict]]:
+    """Like real_esp_responder(), but also tracks SystemState/
+    RecoveryTracker across calls the way the real ESP's SharedState does,
+    using is_data_stale_for_safety() -- so a scenario can prove the bridge
+    relays the ESP's real Gate-A "recovery requires stable valid
+    messages" behavior across a *sequence* of requests, not just a single
+    isolated reading like the other scenarios in this file.
+
+    Starting in Mode.WARNING (with communication_state set to match, as
+    the real SharedState always keeps them in sync) lets a test begin
+    mid-recovery without needing to simulate real wall-clock staleness
+    detection first -- staleness detection itself is already covered by
+    tests/test_protocol.py's TestStaleness.
+    """
+    communication_state = (
+        CommunicationState.DATA_STALE if initial_mode == Mode.WARNING else CommunicationState.DATA_ACTIVE
+    )
+    system_state = {
+        "value": SystemState(
+            mode=initial_mode, communication_state=communication_state, alarm_level="normal",
+            boot_id="recovery-scenario",
+        )
+    }
+    recovery = RecoveryTracker()
+    previous_pump_requested = {"value": False}
+
+    def responder(url: str, payload: dict) -> Tuple[int, dict]:
+        values = payload["values"]
+        temperature = values["temperature"]
+        if not is_valid_temperature_c(temperature):
+            return 400, {"accepted": False, "error": "temperature out of range"}
+
+        # Mirrors SharedState::tick() running just before this message is
+        # processed (any_stale=False: this scenario is about the recovery
+        # streak, not about re-triggering staleness mid-test).
+        tick_result = evaluate_tick(system_state["value"], recovery, any_stale=False)
+        system_state["value"] = tick_result.system_state
+
+        sensors = make_sensors(
+            temperature=temperature, soil_moisture=values.get("soil_moisture"), rain=values.get("rain"),
+            water_level_percent=values.get("water_level_percent"),
+        )
+        decision = evaluate_decision(
+            sensors, previous_pump_requested["value"], decision_id=f"D{payload['sequence']}"
+        )
+        data_stale = is_data_stale_for_safety(system_state["value"].mode)
+        safety = evaluate_safety(decision, tank_level_percent=values.get("water_level_percent"), data_stale=data_stale)
+        previous_pump_requested["value"] = decision.requested_pump
+        recovery.record_valid()
 
         body = {
             "accepted": True,
@@ -217,6 +302,33 @@ def test_scenario(client, monkeypatch, scenario: Scenario):
         assert body["mode"] == scenario.expect_mode, scenario.name
     if scenario.expect_alarm_level is not None:
         assert body["alarm_level"] == scenario.expect_alarm_level, scenario.name
+
+
+def test_recovery_requires_stable_valid_messages_through_the_bridge(client, monkeypatch):
+    """Gate A ("Recovery requires stable valid messages"), proven through
+    the real bridge protocol path -- not just logic/ in isolation like
+    tests/test_protocol.py's TestFullRecoveryGatingIntegration, and not
+    just live hardware like the 2026-08-05 session that found this bug.
+    Starts mid-recovery (Mode.WARNING) and sends a sequence of otherwise
+    identical readings through /api/temperature, confirming the bridge
+    relays safety_override for exactly RECOVERY_CONSECUTIVE_VALID_REQUIRED
+    messages before automatic resumes on the next one -- this is the
+    scenario Stage 8's original suite never modeled, since its fake ESP
+    never tracked staleness/recovery at all.
+    """
+    install_responder(monkeypatch, real_esp_responder_with_recovery(initial_mode=Mode.WARNING))
+    payload = {"temperature": 25.0, "soil_moisture": 50.0, "water_level_percent": 80.0, "rain": 0.0}
+
+    for i in range(RECOVERY_CONSECUTIVE_VALID_REQUIRED):
+        response = client.post("/api/temperature", json=payload)
+        assert response.status_code == 200
+        assert response.json()["mode"] == "safety_override", (
+            f"message {i + 1}: resumed automatic too early"
+        )
+
+    response = client.post("/api/temperature", json=payload)
+    assert response.status_code == 200
+    assert response.json()["mode"] == "automatic"
 
 
 def test_communication_loss_returns_502_and_logs_event(client, monkeypatch):
