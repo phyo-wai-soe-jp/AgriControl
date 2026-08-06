@@ -4,9 +4,13 @@ AgriControl is the project workspace for an ESP32 Virtual Control Lab: a
 digital-twin and hardware-in-the-loop control platform for a greenhouse-style
 controller.
 
-Public progress dashboard:
+## Live Links
 
-https://phyowaisoe.com/agricontrol/taskmanagement/
+- Control site (simulator, drives the real ESP32 board):
+  https://agricontrol.phyowaisoe.com/
+- Progress dashboard: https://agricontrol.phyowaisoe.com/taskmanagement/
+
+(Both are also reachable under `https://phyowaisoe.com/agricontrol/...`.)
 
 ## Source Of Truth
 
@@ -17,6 +21,19 @@ bypass the central control loop.
 The physical board is confirmed by `ESP32-C3M-TRY-R1-20230701.pdf`, the
 owner's manual for the ESP32-C3M-TRY (MicroFan) eval board used to build the
 control lab.
+
+## Architecture
+
+The control site talks to a FastAPI bridge, which talks to the real
+ESP32-C3M-TRY over MQTT (via a self-hosted Mosquitto broker) -- not direct
+HTTP. This lets the board sit behind a home NAT with no port-forwarding or
+tunnel: both the ESP and the bridge make outbound connections to the broker.
+The ESP remains the sole decision-making authority; the bridge only relays,
+correlates requests/responses, and logs.
+
+```
+Browser (simulator) --HTTP--> FastAPI bridge --MQTT--> Mosquitto --MQTT--> ESP32-C3M-TRY
+```
 
 ## Repository Map
 
@@ -38,23 +55,30 @@ control lab.
 - `data/prompt-test-library.json` - machine-readable prompt and test catalog.
 - `tools/generate-prompt-test-library.mjs` - rebuilds the Markdown and JSON
   prompt library from the baseline model.
+- `tools/mqtt_hardware_verify.py` - standalone MQTT client for verifying the
+  real board against `firmware/src/mqtt_test_harness.cpp` directly, without
+  going through the bridge.
 - `logic/` - host-runnable pure logic: canonical sensor state, system and
-  actuator state, the stateful decision engine, and the safety supervisor.
+  actuator state, the stateful decision engine, the safety supervisor, and
+  actuator-feedback fault simulation (`actuator_feedback.py`).
 - `tests/` - unit, boundary, conflict, and sequence tests for `logic/`
   (`python3 -m unittest discover -s tests`).
-- `firmware/` - PlatformIO / Arduino C++ project for the confirmed
-  ESP32-C3M-TRY board: Stage 3 output test environments, a Stage 4 ESP
-  runtime, a Stage 5 first vertical slice, and a Stage 7 irrigation slice,
-  with the safety supervisor ported and wired in throughout. Unverified by
-  a build in this environment -- no PlatformIO toolchain or physical board
-  access here.
-- `backend/` - FastAPI bridge (Stage 6/7, Branch 3) between the website
-  simulator and the ESP. Unlike `firmware/`, this has actually been run and
-  tested here (`python3 -m pytest backend/tests/`).
-- `simulator/` - the website simulator (Stage 6/7, Branch 2): virtual
-  temperature/soil/tank/rain controls, ESP response display, virtual
-  window/fan/pump, event log. Functionally tested with a jsdom harness;
-  never opened in a real browser.
+- `firmware/` - PlatformIO / Arduino C++ project for the ESP32-C3M-TRY board.
+  `env:mqtt_test_harness` is what's actually flashed and running on the real
+  board in production (MQTT transport, no port-forwarding needed);
+  `env:irrigation_slice` is the equivalent direct-HTTP version for
+  local-network-only use. Both share the same decision engine, safety
+  supervisor, and actuator-feedback handling. All 10 environments build
+  clean; the MQTT and HTTP slices have each been flashed and verified
+  against the real board (Gates A-C).
+- `backend/` - FastAPI bridge (Stage 6/7/9, Branch 3) between the website
+  simulator and the ESP, talking MQTT via `paho-mqtt`. Actually run and
+  tested (`python3 -m pytest backend/tests/` -- 35 passing).
+- `simulator/` - the live control site: temperature/soil-moisture/tank-level
+  sliders, a live actuator view (animated window, spinning fan, and a
+  water-flowing pump/valve visual), and a Japanese/English toggle. Verified
+  end-to-end against the real ESP32 board over the public internet, not just
+  host-level tests -- deployed at https://agricontrol.phyowaisoe.com/.
 - `AGENTS.md` - instructions for coding agents working in this repo.
 
 ## Current Progress Model
